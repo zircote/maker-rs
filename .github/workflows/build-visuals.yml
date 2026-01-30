@@ -1,0 +1,45 @@
+---
+name: Build Visual Assets
+
+"on":
+  workflow_dispatch:
+    inputs:
+      build_deck:
+        description: 'Build executive briefing deck'
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: workspace
+        run: npm install
+
+      - name: Validate SVG files
+        working-directory: workspace
+        run: node validate-svg.js
+
+      - name: Generate PNG assets
+        working-directory: workspace
+        run: node generate-assets.js
+
+      - name: Build executive briefing deck
+        if: ${{ inputs.build_deck }}
+        working-directory: workspace
+        run: node build-deck.js
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-assets
+          path: |
+            workspace/slides/*.png
+            workspace/*.pptx

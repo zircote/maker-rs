@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" width="900" height="500">
+  <defs>
+    <linearGradient id="ibg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fefce8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fef7ed;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="500" rx="16" fill="url(#ibg)" />
+  <rect width="900" height="500" rx="16" fill="none" stroke="#e2e8f0" stroke-width="1.5" />
+
+  <!-- Title -->
+  <text x="450" y="52" font-family="Georgia, serif" font-size="28" font-weight="bold" fill="#1e293b" text-anchor="middle">How It Works</text>
+
+  <!-- Flow: 5 steps connected by arrows -->
+
+  <!-- Step 1: Define Context -->
+  <g transform="translate(60, 90)">
+    <rect width="150" height="130" rx="12" fill="#fff" stroke="#fed7aa" stroke-width="2" />
+    <circle cx="75" cy="30" r="16" fill="#fff7ed" stroke="#f97316" stroke-width="2" />
+    <text x="75" y="35" font-family="sans-serif" font-size="14" font-weight="bold" fill="#f97316" text-anchor="middle">1</text>
+    <text x="75" y="65" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">Define</text>
+    <text x="75" y="82" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">Context</text>
+    <text x="75" y="108" font-family="sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Problem statement</text>
+    <text x="75" y="122" font-family="sans-serif" font-size="11" fill="#64748b" text-anchor="middle">+ constraints</text>
+  </g>
+
+  <!-- Arrow 1-2 -->
+  <path d="M 218 155 C 238 155, 238 155, 248 155" stroke="#cbd5e1" stroke-width="2" fill="none" marker-end="url(#arrowhead)" />
+  <polygon id="arrowhead" points="248,155 240,150 240,160" fill="#cbd5e1" />
+
+  <!-- Step 2: Research -->
+  <g transform="translate(255, 90)">
+    <rect width="150" height="130" rx="12" fill="#fff" stroke="#bae6fd" stroke-width="2" />
+    <circle cx="75" cy="30" r="16" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="2" />
+    <text x="75" y="35" font-family="sans-serif" font-size="14" font-weight="bold" fill="#0ea5e9" text-anchor="middle">2</text>
+    <text x="75" y="65" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">Research</text>
+    <text x="75" y="82" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">Domain</text>
+    <text x="75" y="108" font-family="sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Industry frameworks</text>
+    <text x="75" y="122" font-family="sans-serif" font-size="11" fill="#64748b" text-anchor="middle">+ best practices</text>
+  </g>
+
+  <!-- Arrow 2-3 -->
+  <polygon points="443,155 435,150 435,160" fill="#cbd5e1" />
+
+  <!-- Step 3: Generate -->
+  <g transform="translate(450, 90)">
+    <rect width="150" height="130" rx="12" fill="#fff" stroke="#e9d5ff" stroke-width="2" />
+    <circle cx="75" cy="30" r="16" fill="#faf5ff" stroke="#8b5cf6" stroke-width="2" />
+    <text x="75" y="35" font-family="sans-serif" font-size="14" font-weight="bold" fill="#8b5cf6" text-anchor="middle">3</text>
+    <text x="75" y="65" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">Generate</text>
+    <text x="75" y="82" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">Artifacts</text>
+    <text x="75" y="108" font-family="sans-serif" font-size="11" fill="#64748b" text-anchor="middle">14 professional</text>
+    <text x="75" y="122" font-family="sans-serif" font-size="11" fill="#64748b" text-anchor="middle">planning docs</text>
+  </g>
+
+  <!-- Arrow 3-4 -->
+  <polygon points="638,155 630,150 630,160" fill="#cbd5e1" />
+
+  <!-- Step 4: Execute -->
+  <g transform="translate(645, 90)">
+    <rect width="195" height="130" rx="12" fill="#fff" stroke="#bbf7d0" stroke-width="2" />
+    <circle cx="97" cy="30" r="16" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" />
+    <text x="97" y="35" font-family="sans-serif" font-size="14" font-weight="bold" fill="#22c55e" text-anchor="middle">4</text>
+    <text x="97" y="65" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">Execute &amp;</text>
+    <text x="97" y="82" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">Deliver</text>
+    <text x="97" y="108" font-family="sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Track with JIRA,</text>
+    <text x="97" y="122" font-family="sans-serif" font-size="11" fill="#64748b" text-anchor="middle">measure with KPIs</text>
+  </g>
+
+  <!-- Artifact Grid -->
+  <text x="450" y="270" font-family="Georgia, serif" font-size="20" font-weight="bold" fill="#1e293b" text-anchor="middle">Generated Artifacts</text>
+
+  <!-- Row 1 -->
+  <g transform="translate(40, 290)">
+    <rect width="155" height="44" rx="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#ea580c" font-weight="600">Project Plan</text>
+  </g>
+  <g transform="translate(210, 290)">
+    <rect width="155" height="44" rx="8" fill="#f0f9ff" stroke="#bae6fd" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#0284c7" font-weight="600">Gantt Chart</text>
+  </g>
+  <g transform="translate(380, 290)">
+    <rect width="155" height="44" rx="8" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#7c3aed" font-weight="600">JIRA Structure</text>
+  </g>
+  <g transform="translate(550, 290)">
+    <rect width="155" height="44" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#16a34a" font-weight="600">RACI Matrix</text>
+  </g>
+  <g transform="translate(720, 290)">
+    <rect width="140" height="44" rx="8" fill="#fef2f2" stroke="#fecaca" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#dc2626" font-weight="600">Risk Register</text>
+  </g>
+
+  <!-- Row 2 -->
+  <g transform="translate(40, 346)">
+    <rect width="155" height="44" rx="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#ea580c" font-weight="600">Severity Classes</text>
+  </g>
+  <g transform="translate(210, 346)">
+    <rect width="155" height="44" rx="8" fill="#f0f9ff" stroke="#bae6fd" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#0284c7" font-weight="600">Best Practices</text>
+  </g>
+  <g transform="translate(380, 346)">
+    <rect width="155" height="44" rx="8" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#7c3aed" font-weight="600">Success Metrics</text>
+  </g>
+  <g transform="translate(550, 346)">
+    <rect width="155" height="44" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#16a34a" font-weight="600">Runbook Template</text>
+  </g>
+  <g transform="translate(720, 346)">
+    <rect width="140" height="44" rx="8" fill="#fef2f2" stroke="#fecaca" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#dc2626" font-weight="600">Exec Briefing</text>
+  </g>
+
+  <!-- Row 3 -->
+  <g transform="translate(40, 402)">
+    <rect width="155" height="44" rx="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#ea580c" font-weight="600">README</text>
+  </g>
+  <g transform="translate(210, 402)">
+    <rect width="155" height="44" rx="8" fill="#f0f9ff" stroke="#bae6fd" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#0284c7" font-weight="600">Changelog</text>
+  </g>
+  <g transform="translate(380, 402)">
+    <rect width="155" height="44" rx="8" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#7c3aed" font-weight="600">SVG Infographic</text>
+  </g>
+  <g transform="translate(550, 402)">
+    <rect width="155" height="44" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1" />
+    <text x="14" y="27" font-family="sans-serif" font-size="12" fill="#16a34a" font-weight="600">Social Preview</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="450" y="478" font-family="sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle" letter-spacing="1">
+    ANY DOMAIN  ·  ANY INDUSTRY  ·  PROFESSIONAL QUALITY
+  </text>
+</svg>

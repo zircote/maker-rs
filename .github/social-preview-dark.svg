@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <linearGradient id="bg-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accent1-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#ea580c;stop-opacity:0.6" />
+    </linearGradient>
+    <linearGradient id="accent2-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#0284c7;stop-opacity:0.5" />
+    </linearGradient>
+    <linearGradient id="accent3-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:0.5" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bg-dark)" />
+
+  <!-- Organic illustrated shapes -->
+  <path d="M 900 -20 C 950 30, 1020 50, 1080 20 C 1140 -10, 1200 40, 1260 80 C 1300 110, 1290 180, 1260 220 C 1230 260, 1160 240, 1100 260 C 1040 280, 980 250, 940 200 C 900 150, 880 80, 900 -20 Z"
+        fill="url(#accent1-dark)" opacity="0.15" />
+  <path d="M -40 420 C 20 380, 100 400, 160 440 C 220 480, 200 540, 240 580 C 280 620, 180 660, 100 650 C 20 640, -30 600, -40 540 C -50 480, -60 460, -40 420 Z"
+        fill="url(#accent2-dark)" opacity="0.15" />
+  <path d="M 1050 350 C 1090 320, 1140 340, 1160 380 C 1180 420, 1150 460, 1110 470 C 1070 480, 1030 450, 1020 410 C 1010 370, 1020 370, 1050 350 Z"
+        fill="url(#accent3-dark)" opacity="0.12" />
+
+  <!-- Scattered organic dots -->
+  <circle cx="180" cy="120" r="6" fill="#f97316" opacity="0.2" />
+  <circle cx="320" cy="80" r="4" fill="#0ea5e9" opacity="0.15" />
+  <circle cx="1100" cy="520" r="5" fill="#8b5cf6" opacity="0.15" />
+  <circle cx="950" cy="140" r="3" fill="#f97316" opacity="0.2" />
+  <circle cx="400" cy="540" r="7" fill="#0ea5e9" opacity="0.1" />
+  <circle cx="750" cy="580" r="4" fill="#8b5cf6" opacity="0.15" />
+
+  <!-- Hand-drawn style lines -->
+  <path d="M 80 300 C 100 295, 120 305, 140 300 C 160 295, 180 305, 200 300"
+        stroke="#f97316" stroke-width="2" fill="none" opacity="0.15" stroke-linecap="round" />
+  <path d="M 1080 480 C 1100 475, 1120 485, 1140 480 C 1160 475, 1180 485, 1200 480"
+        stroke="#0ea5e9" stroke-width="2" fill="none" opacity="0.15" stroke-linecap="round" />
+
+  <!-- Illustrated document stack icon -->
+  <g transform="translate(140, 200)" opacity="0.85">
+    <rect x="16" y="-8" width="100" height="130" rx="6" fill="#1e293b" stroke="#334155" stroke-width="2" />
+    <rect x="8" y="-4" width="100" height="130" rx="6" fill="#1e293b" stroke="#334155" stroke-width="2" />
+    <rect x="0" y="0" width="100" height="130" rx="6" fill="#1e293b" stroke="#475569" stroke-width="2" />
+    <line x1="16" y1="24" x2="84" y2="24" stroke="#f97316" stroke-width="3" stroke-linecap="round" />
+    <line x1="16" y1="42" x2="70" y2="42" stroke="#475569" stroke-width="2" stroke-linecap="round" />
+    <line x1="16" y1="56" x2="78" y2="56" stroke="#475569" stroke-width="2" stroke-linecap="round" />
+    <line x1="16" y1="70" x2="60" y2="70" stroke="#475569" stroke-width="2" stroke-linecap="round" />
+    <path d="M 16 90 L 28 102 L 50 78" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Illustrated Gantt bars -->
+  <g transform="translate(140, 400)" opacity="0.8">
+    <rect x="0" y="0" width="30" height="10" rx="5" fill="#f97316" />
+    <rect x="20" y="18" width="50" height="10" rx="5" fill="#0ea5e9" />
+    <rect x="10" y="36" width="40" height="10" rx="5" fill="#8b5cf6" />
+    <rect x="40" y="54" width="60" height="10" rx="5" fill="#22c55e" />
+  </g>
+
+  <!-- Main Title -->
+  <text x="340" y="250" font-family="Georgia, 'Times New Roman', serif" font-size="56" font-weight="bold" fill="#f1f5f9" letter-spacing="-1">
+    Project Planning
+  </text>
+  <text x="340" y="315" font-family="Georgia, 'Times New Roman', serif" font-size="56" font-weight="bold" fill="#f1f5f9" letter-spacing="-1">
+    Template
+  </text>
+
+  <!-- Subtitle -->
+  <text x="340" y="370" font-family="'Segoe UI', system-ui, sans-serif" font-size="22" fill="#94a3b8" letter-spacing="0.5">
+    Generate comprehensive project artifacts
+  </text>
+  <text x="340" y="400" font-family="'Segoe UI', system-ui, sans-serif" font-size="22" fill="#94a3b8" letter-spacing="0.5">
+    from a single problem statement
+  </text>
+
+  <!-- Feature pills -->
+  <g transform="translate(340, 440)">
+    <rect x="0" y="0" width="120" height="32" rx="16" fill="#431407" stroke="#9a3412" stroke-width="1.5" />
+    <text x="60" y="21" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" fill="#fb923c" text-anchor="middle" font-weight="600">Gantt Charts</text>
+
+    <rect x="132" y="0" width="138" height="32" rx="16" fill="#082f49" stroke="#0369a1" stroke-width="1.5" />
+    <text x="201" y="21" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" fill="#38bdf8" text-anchor="middle" font-weight="600">JIRA Structures</text>
+
+    <rect x="282" y="0" width="130" height="32" rx="16" fill="#2e1065" stroke="#6d28d9" stroke-width="1.5" />
+    <text x="347" y="21" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" fill="#a78bfa" text-anchor="middle" font-weight="600">Risk Registers</text>
+
+    <rect x="424" y="0" width="128" height="32" rx="16" fill="#052e16" stroke="#15803d" stroke-width="1.5" />
+    <text x="488" y="21" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" fill="#4ade80" text-anchor="middle" font-weight="600">RACI Matrices</text>
+  </g>
+
+  <!-- Powered by badge -->
+  <g transform="translate(340, 500)">
+    <text font-family="'Segoe UI', system-ui, sans-serif" font-size="14" fill="#64748b" letter-spacing="2" font-weight="500">
+      POWERED BY CLAUDE AGENTS &amp; SKILLS
+    </text>
+  </g>
+
+  <!-- Bottom accent -->
+  <rect x="0" y="632" width="1280" height="8" fill="url(#accent1-dark)" opacity="0.6" />
+</svg>

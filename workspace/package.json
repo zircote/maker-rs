@@ -1,0 +1,18 @@
+{
+  "name": "project-planning-workspace",
+  "version": "1.0.0",
+  "description": "Build tools for executive briefing deck and visual assets",
+  "private": true,
+  "scripts": {
+    "generate-assets": "node generate-assets.js",
+    "build-deck": "node build-deck.js",
+    "validate-svg": "node validate-svg.js",
+    "build": "npm run generate-assets && npm run build-deck"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.0",
+    "glob": "^10.0.0",
+    "pptxgenjs": "^3.12.0",
+    "sharp": "^0.33.0"
+  }
+}
