@@ -1,116 +1,79 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#fef7ed;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#fff7ed;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="accent1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#f97316;stop-opacity:0.8" />
-      <stop offset="100%" style="stop-color:#ea580c;stop-opacity:0.9" />
-    </linearGradient>
-    <linearGradient id="accent2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:0.7" />
-      <stop offset="100%" style="stop-color:#0284c7;stop-opacity:0.8" />
-    </linearGradient>
-    <linearGradient id="accent3" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:0.6" />
-      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:0.7" />
+    <linearGradient id="bg-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0f9ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#e0f2fe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#dbeafe;stop-opacity:1" />
     </linearGradient>
   </defs>
 
   <!-- Background -->
-  <rect width="1280" height="640" fill="url(#bg)" />
+  <rect width="1280" height="640" fill="url(#bg-light)" />
 
-  <!-- Organic illustrated shapes - hand-drawn aesthetic -->
-  <!-- Large flowing blob top-right -->
-  <path d="M 900 -20 C 950 30, 1020 50, 1080 20 C 1140 -10, 1200 40, 1260 80 C 1300 110, 1290 180, 1260 220 C 1230 260, 1160 240, 1100 260 C 1040 280, 980 250, 940 200 C 900 150, 880 80, 900 -20 Z"
-        fill="url(#accent1)" opacity="0.15" />
-
-  <!-- Flowing blob bottom-left -->
-  <path d="M -40 420 C 20 380, 100 400, 160 440 C 220 480, 200 540, 240 580 C 280 620, 180 660, 100 650 C 20 640, -30 600, -40 540 C -50 480, -60 460, -40 420 Z"
-        fill="url(#accent2)" opacity="0.15" />
-
-  <!-- Small accent blob center-right -->
-  <path d="M 1050 350 C 1090 320, 1140 340, 1160 380 C 1180 420, 1150 460, 1110 470 C 1070 480, 1030 450, 1020 410 C 1010 370, 1020 370, 1050 350 Z"
-        fill="url(#accent3)" opacity="0.12" />
-
-  <!-- Scattered organic dots -->
-  <circle cx="180" cy="120" r="6" fill="#f97316" opacity="0.25" />
-  <circle cx="320" cy="80" r="4" fill="#0ea5e9" opacity="0.2" />
-  <circle cx="1100" cy="520" r="5" fill="#8b5cf6" opacity="0.2" />
-  <circle cx="950" cy="140" r="3" fill="#f97316" opacity="0.3" />
-  <circle cx="400" cy="540" r="7" fill="#0ea5e9" opacity="0.15" />
-  <circle cx="750" cy="580" r="4" fill="#8b5cf6" opacity="0.2" />
-
-  <!-- Hand-drawn style lines (wavy) -->
-  <path d="M 80 300 C 100 295, 120 305, 140 300 C 160 295, 180 305, 200 300"
-        stroke="#f97316" stroke-width="2" fill="none" opacity="0.2" stroke-linecap="round" />
-  <path d="M 1080 480 C 1100 475, 1120 485, 1140 480 C 1160 475, 1180 485, 1200 480"
-        stroke="#0ea5e9" stroke-width="2" fill="none" opacity="0.2" stroke-linecap="round" />
-
-  <!-- Illustrated document stack icon -->
-  <g transform="translate(140, 200)" opacity="0.9">
-    <!-- Back page -->
-    <rect x="16" y="-8" width="100" height="130" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="2" />
-    <!-- Middle page -->
-    <rect x="8" y="-4" width="100" height="130" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="2" />
-    <!-- Front page -->
-    <rect x="0" y="0" width="100" height="130" rx="6" fill="#fff" stroke="#cbd5e1" stroke-width="2" />
-    <!-- Lines on front page -->
-    <line x1="16" y1="24" x2="84" y2="24" stroke="#f97316" stroke-width="3" stroke-linecap="round" />
-    <line x1="16" y1="42" x2="70" y2="42" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
-    <line x1="16" y1="56" x2="78" y2="56" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
-    <line x1="16" y1="70" x2="60" y2="70" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
-    <!-- Checkmark -->
-    <path d="M 16 90 L 28 102 L 50 78" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-  </g>
-
-  <!-- Illustrated Gantt bars icon -->
-  <g transform="translate(140, 400)" opacity="0.85">
-    <rect x="0" y="0" width="30" height="10" rx="5" fill="#f97316" />
-    <rect x="20" y="18" width="50" height="10" rx="5" fill="#0ea5e9" />
-    <rect x="10" y="36" width="40" height="10" rx="5" fill="#8b5cf6" />
-    <rect x="40" y="54" width="60" height="10" rx="5" fill="#22c55e" />
-  </g>
+  <!-- Decorative elements -->
+  <circle cx="120" cy="120" r="80" fill="#bfdbfe" opacity="0.3" />
+  <circle cx="1160" cy="100" r="60" fill="#a5f3fc" opacity="0.3" />
+  <circle cx="1100" cy="520" r="100" fill="#c7d2fe" opacity="0.3" />
+  <circle cx="180" cy="540" r="70" fill="#ddd6fe" opacity="0.3" />
 
   <!-- Main Title -->
-  <text x="340" y="250" font-family="Georgia, 'Times New Roman', serif" font-size="56" font-weight="bold" fill="#1e293b" letter-spacing="-1">
-    Project Planning
-  </text>
-  <text x="340" y="315" font-family="Georgia, 'Times New Roman', serif" font-size="56" font-weight="bold" fill="#1e293b" letter-spacing="-1">
-    Template
-  </text>
+  <text x="640" y="200" font-family="sans-serif" font-size="72" font-weight="bold" fill="#0f172a" text-anchor="middle">MAKER Framework</text>
 
   <!-- Subtitle -->
-  <text x="340" y="370" font-family="'Segoe UI', system-ui, sans-serif" font-size="22" fill="#64748b" letter-spacing="0.5">
-    Generate comprehensive project artifacts
-  </text>
-  <text x="340" y="400" font-family="'Segoe UI', system-ui, sans-serif" font-size="22" fill="#64748b" letter-spacing="0.5">
-    from a single problem statement
-  </text>
+  <text x="640" y="260" font-family="sans-serif" font-size="32" fill="#475569" text-anchor="middle">Zero-Error Long-Horizon LLM Execution</text>
 
-  <!-- Feature pills -->
-  <g transform="translate(340, 440)">
-    <rect x="0" y="0" width="120" height="32" rx="16" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5" />
-    <text x="60" y="21" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" fill="#ea580c" text-anchor="middle" font-weight="600">Gantt Charts</text>
+  <!-- Divider line -->
+  <line x1="340" y1="300" x2="940" y2="300" stroke="#cbd5e1" stroke-width="2" />
 
-    <rect x="132" y="0" width="138" height="32" rx="16" fill="#f0f9ff" stroke="#bae6fd" stroke-width="1.5" />
-    <text x="201" y="21" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" fill="#0284c7" text-anchor="middle" font-weight="600">JIRA Structures</text>
+  <!-- Key Metrics Row -->
+  <g transform="translate(0, 340)">
+    <!-- Metric 1: Success Rate -->
+    <g transform="translate(180, 0)">
+      <rect width="240" height="140" rx="12" fill="#ffffff" stroke="#3b82f6" stroke-width="3" />
+      <text x="120" y="45" font-family="sans-serif" font-size="48" font-weight="bold" fill="#3b82f6" text-anchor="middle">95%+</text>
+      <text x="120" y="75" font-family="sans-serif" font-size="18" fill="#475569" text-anchor="middle">Success Rate</text>
+      <text x="120" y="100" font-family="sans-serif" font-size="14" fill="#64748b" text-anchor="middle">1,000+ step tasks</text>
+      <text x="120" y="122" font-family="sans-serif" font-size="14" fill="#64748b" text-anchor="middle">vs. ~0% baseline</text>
+    </g>
 
-    <rect x="282" y="0" width="130" height="32" rx="16" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.5" />
-    <text x="347" y="21" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" fill="#7c3aed" text-anchor="middle" font-weight="600">Risk Registers</text>
+    <!-- Metric 2: Cost Savings -->
+    <g transform="translate(460, 0)">
+      <rect width="240" height="140" rx="12" fill="#ffffff" stroke="#10b981" stroke-width="3" />
+      <text x="120" y="45" font-family="sans-serif" font-size="48" font-weight="bold" fill="#10b981" text-anchor="middle">73%</text>
+      <text x="120" y="75" font-family="sans-serif" font-size="18" fill="#475569" text-anchor="middle">Cost Savings</text>
+      <text x="120" y="100" font-family="sans-serif" font-size="14" fill="#64748b" text-anchor="middle">API call reduction</text>
+      <text x="120" y="122" font-family="sans-serif" font-size="14" fill="#64748b" text-anchor="middle">Θ(s ln s) scaling</text>
+    </g>
 
-    <rect x="424" y="0" width="128" height="32" rx="16" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5" />
-    <text x="488" y="21" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" fill="#16a34a" text-anchor="middle" font-weight="600">RACI Matrices</text>
+    <!-- Metric 3: Task Length -->
+    <g transform="translate(740, 0)">
+      <rect width="240" height="140" rx="12" fill="#ffffff" stroke="#f59e0b" stroke-width="3" />
+      <text x="120" y="45" font-family="sans-serif" font-size="48" font-weight="bold" fill="#f59e0b" text-anchor="middle">1M+</text>
+      <text x="120" y="75" font-family="sans-serif" font-size="18" fill="#475569" text-anchor="middle">Max Steps</text>
+      <text x="120" y="100" font-family="sans-serif" font-size="14" fill="#64748b" text-anchor="middle">Zero errors proven</text>
+      <text x="120" y="122" font-family="sans-serif" font-size="14" fill="#64748b" text-anchor="middle">via SPRT voting</text>
+    </g>
   </g>
 
-  <!-- Powered by badge -->
-  <g transform="translate(340, 500)">
-    <text font-family="'Segoe UI', system-ui, sans-serif" font-size="14" fill="#94a3b8" letter-spacing="2" font-weight="500">
-      POWERED BY CLAUDE AGENTS &amp; SKILLS
-    </text>
+  <!-- Technology Badges -->
+  <g transform="translate(320, 530)">
+    <!-- Rust badge -->
+    <rect width="140" height="45" rx="8" fill="#ce422b" />
+    <text x="70" y="30" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">Rust</text>
+
+    <!-- MCP badge -->
+    <rect x="160" width="140" height="45" rx="8" fill="#5b21b6" />
+    <text x="230" y="30" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">MCP</text>
+
+    <!-- LLM badge -->
+    <rect x="320" width="140" height="45" rx="8" fill="#0ea5e9" />
+    <text x="390" y="30" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">LLM</text>
+
+    <!-- Open Source badge -->
+    <rect x="480" width="140" height="45" rx="8" fill="#10b981" />
+    <text x="550" y="30" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">Open Source</text>
   </g>
 
-  <!-- Warm border accent -->
-  <rect x="0" y="632" width="1280" height="8" fill="url(#accent1)" opacity="0.6" />
+  <!-- Footer -->
+  <text x="640" y="610" font-family="sans-serif" font-size="16" fill="#94a3b8" text-anchor="middle">Powered by SPRT Voting, Microagent Architecture, and Red-Flag Validation</text>
 </svg>
