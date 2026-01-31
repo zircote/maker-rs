@@ -6,6 +6,134 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-31
+
+### Added
+
+#### Recursive Decomposition Framework (`src/core/decomposition/`)
+
+##### Core Types (`mod.rs`)
+- **`DecompositionProposal`**: Represents a proposed task breakdown with subtasks, composition function, and metadata
+- **`Subtask`**: Individual decomposed task with `task_id`, `parent_id`, `m_value`, `description`, and `context`
+- **`CompositionFunction` enum**: `Sequential`, `Parallel`, `Conditional`, `Custom` for result aggregation patterns
+- **`DecompositionAgent` trait**: Object-safe trait with `propose_decomposition()` for domain-specific decomposers
+- **`DecompositionProposalEvent`**: New `MakerEvent` variant for decomposition observability
+- **m=1 enforcement**: Property-tested validation ensuring leaf nodes always have `m_value == 1`
+
+##### Decomposition Discriminator (`discriminator.rs`)
+- **`DecompositionDiscriminator`**: Votes on competing decomposition proposals using `VoteRace`
+- **`DecompositionCandidateMatcher`**: `CandidateMatcher` implementation for structural comparison of proposals
+- **`vote_on_decomposition()`**: Entry point for decomposition voting with depth-based k scaling
+- **`DecompositionAccepted` / `DecompositionRejected` events**: Observability for decomposition decisions
+
+##### Problem Solver Interface (`solver.rs`)
+- **`LeafNodeExecutor`**: Executes m=1 leaf subtasks using `vote_with_margin()`
+- **`SubtaskResult`**: Result wrapper with task ID, output, and execution metadata
+- **State passing**: Parent-to-child context propagation through decomposition tree
+- **Partial failure handling**: Configurable retry and error recovery for subtask execution
+
+##### Solution Aggregation (`aggregator.rs`)
+- **`SolutionDiscriminator`**: Votes on competing subtask results before composition
+- **`compose_results()`**: Aggregates results according to `CompositionFunction` semantics
+- **Recursive composition**: Supports nested decomposition trees to arbitrary depth
+- **Schema validation**: Validates composed results against expected output schemas
+- **`SolutionComposed` event**: Emitted when results are successfully aggregated
+
+##### Recursive Orchestrator (`orchestrator.rs`)
+- **`RecursiveOrchestrator`**: Full pipeline coordinator from task to final result
+- **`execute(task)`**: Main entry point implementing decomposition → voting → execution → aggregation loop
+- **Depth limit**: Configurable maximum recursion depth (default 10) prevents infinite decomposition
+- **Cycle detection**: Detects and prevents circular decomposition dependencies
+- **Timeout**: Configurable execution timeout (default 60s) with clean cancellation
+- **Manual decomposition injection**: Override automatic decomposition with user-provided breakdown
+- **Cancellation support**: Graceful shutdown via `CancellationToken`
+
+#### Domain Decomposers (`src/core/decomposition/domains/`)
+
+##### Coding Decomposer (`coding.rs`, behind `code-matcher` feature)
+- **`CodingDecomposer`**: Tree-sitter-based decomposer respecting syntactic boundaries
+- **`CodeDecompositionStrategy` enum**: `FunctionLevel`, `BlockLevel`, `LineLevel`, `Auto` for granularity control
+- **`SyntaxValidationResult`**: Red-flag detection for syntax errors in generated code
+- **Multi-language support**: Rust, Python, JavaScript via `CodeLanguage` enum
+- **17 unit tests** for decomposition strategies and m=1 enforcement
+
+##### ML Pipeline Decomposer (`ml.rs`)
+- **`MLPipelineDecomposer`**: Domain-specific decomposer for machine learning workflows
+- **`PipelineStage` enum**: `DataPrep`, `FeatureEngineering`, `ModelConfig`, `Training`, `Evaluation`, `Validation`, `HyperparameterSearch`, `Deployment`
+- **`HyperparameterSearchConfig`**: Grid, Random, and Bayesian search strategies with `Parallel` composition
+- **`MetricValidation`**: Red-flags for NaN, infinity, and out-of-range metric values
+- **Cross-validation support**: Automatic CV fold creation with configurable splits
+- **22 unit tests** including metric validation and hyperparameter search
+
+##### Data Analysis Decomposer (`data.rs`)
+- **`DataAnalysisDecomposer`**: ETL-pattern decomposer for data processing tasks
+- **`EtlStage` enum**: `Extract`, `SchemaInference`, `Clean`, `Transform`, `Aggregate`, `Enrich`, `Validate`, `Load`, `QualityCheck`
+- **`DataType` enum**: Schema inference type system (String, Integer, Float, Boolean, Timestamp, Json, Binary, Null)
+- **`CoercionValidation`**: Risk assessment for type conversions (Safe, PrecisionLoss, Truncation, PartialFailure, DataLoss)
+- **`NullHandling` strategies**: Explicit null value handling configuration
+- **27 unit tests** for ETL patterns and coercion validation
+
+#### Multi-file Orchestration (`src/core/decomposition/filesystem.rs`)
+- **`FileSystemState`**: Thread-safe state container for multi-file operations
+- **`FileContent`**: Tracks original and current content with diff computation
+- **`FileLock` enum**: `Unlocked`, `ReadLocked(count)`, `WriteLocked(holder_id)` for concurrency control
+- **`FileOperation` enum**: `Create`, `Modify`, `Delete`, `Rename` with rollback support
+- **Cross-file dependency tracking**: Ensures operations execute in dependency order
+- **Cycle detection**: Prevents circular file dependencies
+- **`FileCommit`**: Atomic multi-file commit with all-or-nothing semantics
+- **30 unit tests** for locking, dependencies, and atomic commits
+
+#### Production CLI (`src/bin/maker-cli.rs`)
+- **`maker-cli` binary**: Standalone command-line interface for MAKER operations
+- **`vote` subcommand**: Execute k-margin voting with provider selection
+- **`validate` subcommand**: Run red-flag validation on outputs
+- **`calibrate` subcommand**: Estimate per-step success probability
+- **`config` subcommand**: View and modify runtime configuration
+- **`decompose` subcommand**: Execute recursive decomposition pipeline
+- **JSON/text output modes**: `--format json|text` for programmatic integration
+- **Shell completion**: `--generate-completions bash|zsh|fish`
+- **Standard exit codes**: 0 success, 1 error, 2 validation failure
+
+#### Async Executor (`src/core/async_executor.rs`)
+- **`AsyncVotingExecutor`**: Tokio-native async voting executor
+- **`vote_with_margin_async()`**: Async version of voting with concurrent sampling
+- **Cancellation handling**: Respects `CancellationToken` for graceful shutdown
+- **Connection pooling**: Leverages reqwest connection pool for parallel requests
+- **Property tests**: Verify parity with synchronous executor results
+
+#### Operational Tooling (`src/mcp/health.rs`)
+- **`prometheus` feature flag**: Optional Prometheus metrics export
+- **`HealthStatus`**: Health check response with status, version, and uptime
+- **`/health` MCP resource**: Health check endpoint for monitoring integration
+- **Prometheus metrics**: Counters and histograms for votes, samples, latency (behind feature flag)
+- **`validate_config()` function**: Fail-fast configuration validation
+- **Graceful shutdown**: Tokio signal handling for SIGTERM/SIGINT
+
+#### Documentation
+- **`docs/CLAUDE-CODE-SETUP.md`**: Integration guide for Claude Code/Claude Desktop
+- **MCP integration tests**: 35 tests covering all tools via stdio transport
+
+#### Testing
+- **842+ total tests** across all modules
+- **17 coding decomposer tests** (function/block/line strategies, m=1 enforcement)
+- **22 ML pipeline tests** (stages, hyperparameter search, metric validation)
+- **27 data analysis tests** (ETL patterns, schema inference, coercion)
+- **30 filesystem tests** (locking, dependencies, atomic commits)
+- **Property tests**: m=1 leaf enforcement, execution order validation
+
+### Changed
+- `MakerEvent` enum extended with decomposition-related variants
+- `LoggingObserver` and `MetricsObserver` handle new decomposition events
+- `src/core/mod.rs` exports new `decomposition` module
+- Test count increased from 456 to 842+
+
+### Fixed
+- N/A
+
+### Known Limitations
+- Real LLM end-to-end testing pending (mock tests complete)
+- `prometheus` feature metrics are basic counters; histograms in future release
+
 ## [0.2.0] - 2026-01-31
 
 ### Added
@@ -150,7 +278,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-[Unreleased]: https://github.com/zircote/maker-rs/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/zircote/maker-rs/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/zircote/maker-rs/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/zircote/maker-rs/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/zircote/maker-rs/compare/v0.0.0...v0.1.0
 [0.0.0]: https://github.com/zircote/maker-rs/releases/tag/v0.0.0
