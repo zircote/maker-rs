@@ -1,313 +1,204 @@
 # MAKER Framework
 
-**Zero-Error Long-Horizon LLM Execution via Massively Decomposed Agentic Processes**
+**Zero-Error Long-Horizon LLM Execution via SPRT Voting, Red-Flagging, and Microagent Orchestration**
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/zircote/maker-rs/ci.yml?branch=main)](https://github.com/zircote/maker-rs/actions)
-[![Test Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](https://github.com/zircote/maker-rs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Crates.io](https://img.shields.io/crates/v/maker-rs)](https://crates.io/crates/maker-rs)
 
-> **Achieve 95%+ success rates on 1,000+ step tasks.** MAKER is a Rust implementation of mathematically-grounded error correction for LLM agents, exposing reliability protocols via MCP for integration with Claude Code and other AI assistants.
+MAKER (Massively decomposed Agentic processes with K-margin Error Reduction) is a Rust library and MCP server for mathematically-grounded error correction in LLM agents. It achieves zero-error execution on 1,000+ step tasks through SPRT-based voting, red-flag validation, and m=1 microagent decomposition.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/readme-infographic.svg">
-  <source media="(prefers-color-scheme: light)" srcset=".github/readme-infographic.svg">
-  <img alt="MAKER Framework Architecture" src=".github/readme-infographic.svg">
-</picture>
+Based on: [Solving a Million-Step LLM Task with Zero Errors](https://arxiv.org/abs/2511.09030) (Meyerson et al., 2025)
 
 ## The Problem
 
-Existing LLM-based agents **fail catastrophically on long-horizon tasks**. Even with 99% per-step accuracy, a million-step task has 100% failure probability. Current frameworks (LangChain, CrewAI, AutoGen) lack mathematical reliability guarantees.
+Even with 99% per-step accuracy, a 1,000-step task has only a 0.004% success rate. MAKER transforms this into 95%+ reliability with logarithmic cost scaling.
 
-| Metric | Current State | MAKER Target | Improvement |
-|--------|--------------|--------------|-------------|
-| 100-step task success | ~50% | **95%+** | +90% |
-| 1,000-step task success | ~0% | **95%+** | Previously infeasible |
-| API cost (1,000 steps) | $10-50 (naive retry) | **$3-10** | 60-80% reduction |
-| Cost scaling | Exponential (O(s × 2^k)) | **Logarithmic (Θ(s ln s))** | Enables million-step tasks |
-
-## Our Approach
-
-MAKER achieves zero-error execution through three components:
-
-```mermaid
-graph LR
-    A[Maximal Agentic<br/>Decomposition<br/>m=1 per subtask] -->|Clean context| B[First-to-Ahead-by-K<br/>Voting<br/>SPRT optimal stopping]
-    B -->|Sample diversity| C[Red-Flagging<br/>Discard over repair<br/>Error decorrelation]
-    C -->|State Transfer| D[Next Step]
-    D -->|Iterate| A
-
-    style A fill:#3b82f6,color:#fff
-    style B fill:#10b981,color:#fff
-    style C fill:#f59e0b,color:#fff
-    style D fill:#8b5cf6,color:#fff
-```
-
-### Key Features
-
-- **SPRT-Based Voting**: Sequential probability ratio test achieves optimal decision-making with logarithmic cost scaling
-- **Microagent Architecture**: m=1 constraint (one subtask per agent) minimizes context burden and maximizes reliability
-- **Red-Flag Validation**: Discard malformed outputs without repair to maintain error decorrelation
-- **MCP Integration**: Expose reliability protocols as tools for Claude Code and other AI assistants
-- **Event-Driven Observability**: Complete audit trail with token economics tracking
-- **Multi-Provider Support**: Ollama (local), OpenAI, Anthropic with automatic failover
+| Task Length | Naive Success Rate | MAKER Success Rate | MAKER Cost Scaling |
+|------------|-------------------|-------------------|-------------------|
+| 7 steps    | 93%               | 99%+              | 21 samples        |
+| 1,023 steps| 0%                | 95%+              | ~6,138 samples    |
+| 1M steps   | 0%                | 95%+              | Θ(s ln s)         |
 
 ## Quick Start
 
-### Installation
+### As a Rust Library
 
-```bash
-cargo install maker-rs
+```rust
+use maker::core::{calculate_kmin, MockLlmClient, VoteConfig, vote_with_margin};
+
+// Calculate required k-margin for your task
+let k = calculate_kmin(
+    0.85,   // p: per-step success probability
+    0.95,   // t: target task reliability
+    1_023,  // s: total steps (10-disk Hanoi)
+    1,      // m: steps per agent (must be 1)
+).unwrap();
+
+// Run error-corrected voting
+let client = MockLlmClient::constant("correct_answer");
+let config = VoteConfig::default();
+let result = vote_with_margin("What is 2+2?", k, &client, config).unwrap();
+println!("Winner: {} ({} samples)", result.winner, result.total_samples);
 ```
 
-### MCP Server Setup (Claude Code)
+### As an MCP Server
 
-Add to your Claude Desktop configuration:
+```bash
+# Build and run
+cargo build --release
+cargo run --bin maker-mcp
+```
+
+Add to your Claude Code MCP configuration:
 
 ```json
 {
   "mcpServers": {
     "maker": {
-      "command": "maker-mcp-server",
+      "command": "/path/to/maker-mcp",
       "args": [],
       "env": {
-        "OPENAI_API_KEY": "your-api-key-here"
+        "OPENAI_API_KEY": "your-key",
+        "ANTHROPIC_API_KEY": "your-key"
       }
     }
   }
 }
 ```
 
-### First Vote
+### Run the Demo
 
-```rust
-use maker_rs::{VoteRequest, MakerClient};
+```bash
+# 3-disk Hanoi (7 steps)
+cargo run --example hanoi -- --disks 3
 
-let client = MakerClient::new("ollama").await?;
-let request = VoteRequest {
-    prompt: "Move disk from A to B. State: [[3,2,1], [], []]",
-    k_margin: 3,
-    temperature_diversity: 0.1,
-    max_samples: 20,
-};
+# 10-disk Hanoi with voting (1,023 steps, zero errors)
+cargo run --example hanoi_demo -- --disks 10 --accuracy 0.85
 
-let result = client.vote(request).await?;
-println!("Winner: {} (confidence: {}/{})",
-    result.winner, result.vote_counts[&result.winner], result.total_samples);
-```
-
-## MCP Tools Reference
-
-### `maker/vote` - Parallel Sampling with K-Margin Voting
-
-Request the voted winner from k-margin voting protocol.
-
-**Input:**
-```json
-{
-  "prompt": "Task description",
-  "k_margin": 3,
-  "temperature_diversity": 0.1,
-  "max_samples": 20
-}
-```
-
-**Output:**
-```json
-{
-  "winner": "candidate_hash",
-  "vote_counts": {"candidate_hash": 7},
-  "total_samples": 12,
-  "cost_tokens": 4800,
-  "cost_usd": 0.015
-}
-```
-
-### `maker/validate` - Red-Flag Validation
-
-Check if a response passes red-flag validation rules.
-
-**Input:**
-```json
-{
-  "response": "LLM output text",
-  "schema": {"type": "object", "required": ["move", "next_state"]},
-  "token_limit": 700
-}
-```
-
-**Output:**
-```json
-{
-  "valid": false,
-  "red_flags": ["TokenLengthExceeded"]
-}
-```
-
-### `maker/calibrate` - Estimate Per-Step Success Rate
-
-Estimate success probability (p) for optimal k_min calculation.
-
-**Input:**
-```json
-{
-  "task_samples": [
-    {"prompt": "Move disk 1", "ground_truth": "A to C"},
-    {"prompt": "Move disk 2", "ground_truth": "A to B"}
-  ]
-}
-```
-
-**Output:**
-```json
-{
-  "p_estimate": 0.87,
-  "confidence_interval": [0.82, 0.92],
-  "sample_count": 50,
-  "recommended_k": 4
-}
-```
-
-### `maker/configure` - Runtime Configuration
-
-Set default k, temperature, and provider settings.
-
-**Input:**
-```json
-{
-  "k_default": 3,
-  "temperature_diversity": 0.1,
-  "token_limit": 700,
-  "llm_provider": "ollama"
-}
+# Custom task template
+cargo run --example custom_task
 ```
 
 ## Architecture
 
-```mermaid
-graph TB
-    subgraph "Claude Code / MCP Client"
-        A[User Request]
-    end
-
-    subgraph "MAKER MCP Server"
-        B[MCP Tools]
-        B --> B1[vote]
-        B --> B2[validate]
-        B --> B3[calibrate]
-        B --> B4[configure]
-
-        C[Core Library]
-        C --> C1[SPRT Voting]
-        C --> C2[Red-Flagging]
-        C --> C3[k_min Calculation]
-        C --> C4[State Transfer]
-
-        D[Event Bus]
-        D --> D1[Logging]
-        D --> D2[Metrics]
-
-        E[LLM Clients]
-        E --> E1[Ollama]
-        E --> E2[OpenAI]
-        E --> E3[Anthropic]
-    end
-
-    subgraph "LLM Providers"
-        F1[Local Models]
-        F2[GPT-5.X-nano]
-        F3[Claude Haiku]
-    end
-
-    A -->|JSON-RPC| B
-    B --> C
-    C --> D
-    C --> E
-    E --> F1
-    E --> F2
-    E --> F3
-
-    style A fill:#e1f5ff
-    style C fill:#d4edda
-    style E fill:#fff3cd
-    style D fill:#f8d7da
+```
+src/
+├── core/               # Core MAKER algorithms
+│   ├── kmin.rs         # k_min = ⌈ln(1-t^(1/s)) / ln((1-p)/p)⌉
+│   ├── voting.rs       # VoteRace: first-to-ahead-by-k (thread-safe)
+│   ├── redflag.rs      # RedFlagValidator: discard-don't-repair
+│   ├── executor.rs     # vote_with_margin(): the main integration point
+│   └── orchestration.rs# TaskOrchestrator with m=1 constraint
+├── llm/                # Multi-provider LLM abstraction
+│   ├── ollama.rs       # Local inference
+│   ├── openai.rs       # OpenAI API
+│   ├── anthropic.rs    # Anthropic API
+│   ├── retry.rs        # Exponential backoff with jitter
+│   └── sampler.rs      # Temperature-diverse parallel sampling
+├── mcp/                # MCP server (rmcp v0.13)
+│   ├── server.rs       # MakerServer with #[tool_router]
+│   └── tools/          # maker/vote, validate, calibrate, configure
+└── events/             # Event-driven observability
+    ├── bus.rs           # Tokio broadcast channel
+    └── observers/       # Logging (tracing) + Metrics
 ```
 
-## Financial Impact
+## MCP Tools
 
-| Category | Value |
-|----------|-------|
-| **Annual Savings per Organization** | $50K-200K |
-| **API Cost Reduction** | 60-80% vs. naive retry |
-| **ROI Multiple** | 10-50x (enables previously infeasible tasks) |
-| **3-Year Ecosystem Value** | $150M-300M (1,000+ adopting orgs) |
+### `maker/vote` - Error-Corrected Voting
 
-**Example: 1,000-step coding task (p=0.85, target=95%)**
-- Naive retry: ~15,000 API calls
-- MAKER (k=4): ~4,000 API calls
-- **Savings: 73%**
+```json
+// Request
+{ "prompt": "...", "k_margin": 3, "max_samples": 20 }
 
-## Project Artifacts
+// Response
+{ "winner": "answer", "vote_counts": {"answer": 5}, "total_samples": 7 }
+```
 
-| Document | Description |
-|----------|-------------|
-| [PROJECT-CONTEXT.md](./PROJECT-CONTEXT.md) | Problem statement, constraints, desired outcomes |
-| [PROJECT-PLAN.md](./PROJECT-PLAN.md) | Executive summary, phases, timeline, ROI analysis |
-| [DOMAIN-RESEARCH.md](./_research/DOMAIN-RESEARCH.md) | Industry frameworks, terminology, competitive analysis |
-| [BEST-PRACTICES.md](./BEST-PRACTICES.md) | SPRT theory, Tokio patterns, MCP security, testing strategies |
-| [JIRA-STRUCTURE.md](./JIRA-STRUCTURE.md) | Epic hierarchy, user stories, acceptance criteria, sprints |
-| [GANTT-CHART.md](./GANTT-CHART.md) | Timeline visualization, critical path, dependencies |
-| [RACI-CHART.md](./RACI-CHART.md) | Role definitions, responsibility matrix, decision authority |
-| [RISK-REGISTER.md](./RISK-REGISTER.md) | Risk profiles, mitigation strategies, contingency plans |
-| [SEVERITY-CLASSIFICATION.md](./SEVERITY-CLASSIFICATION.md) | P0-P3 severity levels, routing rules, escalation |
-| [SUCCESS-METRICS.md](./SUCCESS-METRICS.md) | KPIs, baselines, targets, dashboard specifications |
-| [RUNBOOK-TEMPLATE.md](./RUNBOOK-TEMPLATE.md) | Operational procedures for calibration, debugging, incidents |
-| [CHANGELOG.md](./CHANGELOG.md) | Version history and release notes |
+### `maker/validate` - Red-Flag Checking
 
-## Team
+```json
+// Request
+{ "response": "...", "token_limit": 700, "schema": {"required": ["move"]} }
 
-| Role | Responsibility |
-|------|---------------|
-| **Project Maintainer** | Primary developer, algorithm correctness, release management |
-| **Community Contributors** | Code reviews, feature requests, issue reports |
-| **Research Community** | Academic validation, citations, theoretical extensions |
-| **End Users** | Adoption, feedback, MCP integration testing |
+// Response
+{ "valid": false, "red_flags": [{"flag_type": "TokenLengthExceeded", "details": "..."}] }
+```
 
-## Timeline
+### `maker/calibrate` - Success Rate Estimation
 
-| Milestone | Week | Deliverable |
-|-----------|------|-------------|
-| **Phase 1 Complete** | 1 | Core algorithms (voting, red-flagging, k_min) with 95% coverage |
-| **Phase 2 Complete** | 2 | MCP server with 4 tools, multi-provider support |
-| **Phase 3 Complete** | 2 | 10-disk Hanoi demo, cost validation, documentation |
-| **v0.1.0 MVP Release** | 2 | Production-ready MCP server for community adoption |
-| **Semantic Matching** | 4-6 | Support for non-deterministic tasks (coding, ML) |
-| **v1.0.0 Production** | 12-16 | Battle-tested in production, adaptive k, ensemble voting |
+```json
+// Request
+{ "samples": [{"prompt": "...", "ground_truth": "..."}] }
 
-## Contributing
+// Response
+{ "p_estimate": 0.87, "confidence_interval": [0.82, 0.92], "recommended_k": 4 }
+```
 
-We welcome contributions! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for:
+### `maker/configure` - Runtime Configuration
 
-- Code of Conduct
-- Development setup
-- Testing requirements (95% coverage mandatory)
-- Pull request process
-- Security vulnerability reporting
+```json
+// Request
+{ "k_default": 3, "temperature_diversity": 0.1, "token_limit": 700 }
+
+// Response
+{ "applied": true, "current_config": {...} }
+```
+
+## Cost Scaling
+
+MAKER's cost scales as Θ(s ln s) vs. exponential for naive retry:
+
+| Approach | 7 steps | 1,023 steps | 1M steps |
+|----------|---------|-------------|----------|
+| **MAKER** | 21 samples | ~6K samples | ~20M samples |
+| **Naive retry** | 7 attempts | Infeasible | Impossible |
+
+### MAKER vs Naive Retry (Monte Carlo validated, p=0.85, t=0.95)
+
+| Steps (s) | MAKER Cost | Naive Retry Cost | Savings |
+|-----------|-----------|-----------------|---------|
+| 20        | 80        | 1,520           | 94.7%   |
+| 50        | 200       | 506,400         | 99.96%  |
+| 100       | 500       | 3.4 billion     | ~100%   |
+
+Naive retry must rerun the entire task on any step failure. With p=0.85, the probability of completing 100 steps without error is 0.85^100 ≈ 7×10⁻⁸, requiring billions of retries. MAKER's per-step voting keeps costs logarithmic.
+
+Run `cargo test --test monte_carlo -- --nocapture` to reproduce these results.
+
+## Development
+
+```bash
+cargo build                      # Build
+cargo test                       # All tests (unit + integration + property)
+cargo test --example hanoi       # Hanoi example tests (21 tests)
+cargo test --test properties     # Property-based tests (proptest)
+cargo test --test mcp_integration # MCP integration tests
+cargo test --test monte_carlo    # Monte Carlo cost validation
+cargo bench --bench cost_scaling # Cost scaling benchmark
+cargo clippy                     # Lint
+cargo fmt --check                # Format check
+cargo doc --no-deps --open       # API documentation
+```
+
+## Security
+
+MAKER implements defense-in-depth for MCP tool security:
+
+- **Schema enforcement**: `#[serde(deny_unknown_fields)]` on all inputs
+- **Red-flag filtering**: Malformed LLM outputs discarded, never repaired
+- **Prompt limits**: 10,000 character maximum
+- **Microagent isolation**: No history leakage between steps (m=1)
+- **State hash validation**: Corruption detected before state transfer
+
+See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
+
+## References
+
+1. Meyerson, E., et al. (2025). *Solving a Million-Step LLM Task with Zero Errors*. [arXiv:2511.09030](https://arxiv.org/abs/2511.09030)
+2. Anthropic. (2024). *Introducing the Model Context Protocol*. [anthropic.com](https://www.anthropic.com/news/model-context-protocol)
+3. Wald, A. (1945). *Sequential Analysis*. (SPRT foundational work)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
-## References & Citations
-
-1. **Meyerson, E., Paolo, G., Dailey, R., Shahrzad, H., Francon, O., Hayes, C.F., Qiu, X., Hodjat, B., & Miikkulainen, R.** (2025). *Solving a Million-Step LLM Task with Zero Errors*. [arXiv:2511.09030](https://arxiv.org/abs/2511.09030)
-
-2. **Anthropic.** (2024). *Introducing the Model Context Protocol*. [https://www.anthropic.com/news/model-context-protocol](https://www.anthropic.com/news/model-context-protocol)
-
-3. **Wald, A.** (1945). *Sequential Analysis*. (SPRT foundational work)
-
-4. **Tokio Contributors.** *Tokio: An Asynchronous Rust Runtime*. [https://tokio.rs/](https://tokio.rs/)
-
----
-
-**Built with** [Project Planning Template](https://github.com/zircote/project-planning-template) | **Powered by** Claude AI & MCP
+MIT - see [LICENSE](./LICENSE)

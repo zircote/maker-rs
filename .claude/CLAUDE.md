@@ -1,117 +1,63 @@
-# Project Planning Template - CLAUDE.md
+# CLAUDE.md
 
-## Overview
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This repository is a **GitHub template** for generating comprehensive, professional project planning artifacts for ANY problem domain. It uses Claude agents and skills to research the domain and produce industry-appropriate documentation.
+## Project Overview
 
-## How to Use
+MAKER (Massively decomposed Agentic processes with K-margin Error Reduction) is a Rust library and MCP server for zero-error long-horizon LLM agent execution. It implements SPRT-based voting, red-flag validation, and microagent orchestration to achieve mathematically-grounded error correction for LLM agents.
 
-### Step 1: Create Repository from Template
-Click "Use this template" on GitHub to create your project repository.
+The crate exposes its capabilities both as a Rust library (`maker`) and as an MCP server binary (`maker-mcp`) using the `rmcp` SDK with stdio transport.
 
-### Step 2: Define Project Context
-
-**Option A: Interactive Interview (Recommended)**
-
-Run the guided elicitation in Claude Code:
-```text
-/project-context
-```
-This walks you through a structured interview covering problem statement, domain, stakeholders, constraints, available data, and desired outcomes.
-
-**Option B: Manual Creation**
-
-Copy the template to the repository root and fill it in:
-```bash
-cp .claude/templates/PROJECT-CONTEXT.md PROJECT-CONTEXT.md
-```
-
-Then edit `PROJECT-CONTEXT.md` with your project details (problem statement, domain, stakeholders, constraints, available data, desired outcomes).
-
-### Step 3: Generate All Artifacts
-Invoke the master orchestrator:
-
-```text
-/project-architect Generate complete project planning artifacts based on PROJECT-CONTEXT.md
-```
-
-Or generate individual artifacts:
-```text
-/project-context
-/domain-research
-/project-plan
-/gantt-chart
-/jira-structure
-/raci-chart
-/risk-register
-/severity-classification
-/best-practices
-/success-metrics
-/runbook-template
-/readme-generator
-/changelog
-/executive-briefing
-```
-
-> **Note:** The skills `svg-gantt-generator`, `infographic-generator`, and `dependency-analyzer` are internal — they are invoked by agents and other skills, not directly by users.
-
-## Agent Directory
-
-| Agent | Purpose | Use When |
-|-------|---------|----------|
-| `project-architect` | Master orchestrator - full artifact set | Starting a new project |
-| `context-elicitor` | Interactive context interview | Need help defining project scope |
-| `research-specialist` | Domain research and best practices | Need industry context |
-| `timeline-architect` | Gantt, JIRA, dependencies | Planning schedule |
-| `governance-architect` | RACI, risk, severity | Setting up governance |
-| `metrics-architect` | KPIs, dashboards, exec briefing | Defining measurement |
-| `documentation-architect` | README, changelog, infographics | Final documentation |
-
-## Generated Artifacts
-
-After execution, you will have:
-
-| Artifact | File | Purpose |
-|----------|------|---------|
-| Domain Research | `_research/DOMAIN-RESEARCH.md` | Industry analysis, frameworks, terminology |
-| Master Plan | `PROJECT-PLAN.md` | Executive summary, phases, ROI |
-| Gantt Chart | `GANTT-CHART.md` + `.github/gantt-chart.svg` | Visual timeline |
-| Work Breakdown | `JIRA-STRUCTURE.md` | Epics, stories, sprints |
-| Dependencies | `_research/DEPENDENCY-ANALYSIS.md` | Critical path analysis |
-| RACI | `RACI-CHART.md` | Responsibility matrix |
-| Risks | `RISK-REGISTER.md` | Risk management |
-| Severity | `SEVERITY-CLASSIFICATION.md` | Priority framework |
-| Best Practices | `BEST-PRACTICES.md` | Industry standards |
-| Metrics | `SUCCESS-METRICS.md` | KPIs and measurement |
-| Runbooks | `RUNBOOK-TEMPLATE.md` | Operational procedures |
-| README | `README.md` | GitHub landing page |
-| Changelog | `CHANGELOG.md` | Version history |
-| Visual Assets | `.github/readme-infographic.svg`, `.github/social-preview.svg` | SVG infographics and social previews |
-| Exec Deck | `workspace/*.pptx` | Executive briefing |
-| Execution Plan | `_plan/*.md` + `_plan/*.json` | Persistent plan for future sessions |
-
-## Quality Standards
-
-All artifacts MUST:
-- Use consistent terminology from the domain research
-- Include quantified metrics with baselines and targets
-- Reference industry frameworks with citations
-- Contain Mermaid diagrams or SVG visualizations
-- Cross-reference related artifacts
-- Match the exemplar quality standard ([project-sre](https://github.com/hmhco/project-sre) — private repository)
-
-## Build Commands
+## Build & Test Commands
 
 ```bash
-cd workspace && npm install
-node validate-svg.js      # Validate all .github/*.svg files
-node generate-assets.js   # Generate PNG assets for slides
-node build-deck.js        # Build executive briefing deck
+cargo build                          # Build library and binary
+cargo test                           # Run all tests (unit + integration)
+cargo test --lib                     # Unit tests only
+cargo test --test properties         # Property-based tests (proptest)
+cargo test --test mcp_integration    # MCP integration tests
+cargo test <test_name>               # Run a single test by name
+cargo clippy                         # Lint
+cargo fmt --check                    # Check formatting
+cargo run --bin maker-mcp            # Run the MCP server
 ```
 
-## Customization
+## Architecture
 
-- **Industry sources**: Edit `.claude/skills/domain-research/SKILL.md` adaptation rules
-- **Visual branding**: Edit `.claude/skills/svg-gantt-generator/SKILL.md` color scheme
-- **Artifact structure**: Edit individual skill templates in `.claude/skills/`
-- **Agent workflows**: Edit orchestration in `.claude/agents/`
+### Core Algorithms (`src/core/`)
+
+- **`kmin`** - Calculates minimum k-margin needed for target reliability given per-step success probability (p), target reliability (t), total steps (s), and steps-per-agent (m=1)
+- **`voting`** - `VoteRace`: thread-safe first-to-ahead-by-k vote tracker using `Arc<Mutex<HashMap>>`. A winner is declared when one candidate leads all others by >= k_margin votes
+- **`redflag`** - `RedFlagValidator`: discard-don't-repair validation. Checks token length, JSON schema conformance, and format rules. Returns `Vec<RedFlag>` (empty = valid)
+- **`executor`** - `vote_with_margin()`: the main integration point. Orchestrates the sample-validate-vote loop: generate LLM sample -> red-flag check -> cast vote -> check winner. Synchronous loop (not async) despite async LLM clients
+- **`orchestration`** - `TaskOrchestrator` and `TaskDecomposer` traits for microagent (m=1) task decomposition and state transfer between steps
+
+### LLM Providers (`src/llm/`)
+
+- **`LlmClient` trait** (in `mod.rs`) - async trait using `Pin<Box<dyn Future>>` for object safety. Defines `generate(prompt, temperature) -> Result<LlmResponse, LlmError>`
+- **Provider implementations** - `ollama`, `openai`, `anthropic` modules
+- **`retry`** - Retry logic with backoff for transient LLM errors
+- **`sampler`** - Temperature-diverse sampling (T=0 for first sample, T=diversity for rest)
+
+Note: There are two `LlmClient` traits. The async one in `src/llm/mod.rs` is for real provider integration. The synchronous one in `src/core/executor.rs` is a simpler interface used by the voting engine directly.
+
+### MCP Server (`src/mcp/`)
+
+- **`server`** - `MakerServer` implements rmcp's `ServerHandler` using `#[tool_router]` and `#[tool_handler]` macros. Shared state via `Arc<ServerState>` with `RwLock<ServerConfig>`
+- **`tools/`** - Four MCP tools: `maker/vote`, `maker/validate`, `maker/calibrate`, `maker/configure`. Each has Request/Response structs with serde
+
+### Event System (`src/events/`)
+
+- **`MakerEvent`** enum (serde-tagged with `#[serde(tag = "type")]`) for observability: SampleRequested, SampleCompleted, RedFlagTriggered, VoteCast, VoteDecided, StepCompleted
+- **`EventBus`** - tokio broadcast channel for fan-out to observers
+- **`observers/`** - `LoggingObserver` (tracing) and `MetricsObserver` (counters/gauges)
+
+### Key Dependencies
+
+- `rmcp` (0.13) - MCP SDK with `server`, `transport-io`, `macros` features
+- `tokio` - Async runtime (full features)
+- `proptest` - Property-based testing (dev-dependency)
+
+### Examples
+
+- `examples/hanoi/` - Tower of Hanoi demonstration with task decomposition, showing the m=1 microagent pattern in practice

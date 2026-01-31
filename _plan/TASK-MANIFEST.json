@@ -1,0 +1,1073 @@
+[
+  {
+    "id": "STORY-001-01",
+    "epic_id": "EPIC-001",
+    "epic_title": "Core MAKER Library",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "k_min Calculation",
+    "description": "As a MAKER framework user, I want to calculate the minimum k-margin required for target reliability, so that I can configure voting to achieve mathematically-grounded error correction.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 1,
+    "story_points": 3,
+    "blocked_by": [],
+    "tasks": [
+      "Create src/lib.rs and src/core/mod.rs module structure",
+      "Create src/core/kmin.rs with calculate_kmin function",
+      "Implement formula: k_min = ⌈ln(t^(-m/s)-1) / ln((1-p)/p)⌉",
+      "Add input validation (p, t, m, s constraints)",
+      "Handle edge cases (p → 1, s → ∞)",
+      "Write doc comments with mathematical derivation",
+      "Add unit tests for paper's test cases"
+    ],
+    "acceptance_criteria": [
+      "Function returns correct k_min for test cases from paper",
+      "Property test: k_min increases logarithmically with s",
+      "Property test: k_min decreases as p approaches 1.0",
+      "Property test: k_min increases as t approaches 1.0"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-001-02",
+    "epic_id": "EPIC-001",
+    "epic_title": "Core MAKER Library",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "Vote Race State Tracking",
+    "description": "As a MAKER voting engine, I want to track vote counts for each candidate and detect k-margin leaders, so that I can terminate voting at the optimal stopping point.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 1,
+    "story_points": 5,
+    "blocked_by": [],
+    "tasks": [
+      "Create src/core/voting.rs",
+      "Define CandidateId as newtype",
+      "Implement VoteRace struct with HashMap<CandidateId, usize>",
+      "Implement cast_vote method",
+      "Implement check_winner using Gambler's Ruin boundary",
+      "Handle single candidate edge case",
+      "Make thread-safe",
+      "Emit VoteCast and VoteDecided events"
+    ],
+    "acceptance_criteria": [
+      "Winner correctly identified when lead = k_margin",
+      "No false positives (winner declared before k-margin)",
+      "Thread-safe for concurrent vote casting",
+      "Events emitted to EventBus"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-001-03",
+    "epic_id": "EPIC-001",
+    "epic_title": "Core MAKER Library",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "Red-Flagging Parsers",
+    "description": "As a MAKER framework, I want to discard malformed LLM outputs without attempting repair, so that I maintain error decorrelation for effective voting.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 1,
+    "story_points": 3,
+    "blocked_by": [],
+    "tasks": [
+      "Create src/core/redflag.rs",
+      "Define RedFlag enum (TokenLengthExceeded, FormatViolation, LogicLoop)",
+      "Implement validate_token_length function",
+      "Implement validate_json_schema function",
+      "Add logic loop detection stub",
+      "Emit RedFlagTriggered event"
+    ],
+    "acceptance_criteria": [
+      "Rejects response with 701 tokens when limit is 700",
+      "Rejects response missing required JSON fields",
+      "Accepts valid responses without false positives",
+      "Red-flag rate < 10% on well-calibrated models"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-001-04",
+    "epic_id": "EPIC-001",
+    "epic_title": "Core MAKER Library",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "Microagent Orchestration",
+    "description": "As a MAKER task executor, I want to decompose tasks into m=1 subtasks per agent, so that I minimize context burden and maximize per-step reliability.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 1,
+    "story_points": 5,
+    "blocked_by": [],
+    "tasks": [
+      "Create src/core/orchestration.rs",
+      "Define Subtask struct",
+      "Define AgentOutput struct (move, next_state)",
+      "Define State type",
+      "Implement TaskDecomposer trait",
+      "Enforce m=1 constraint",
+      "Implement state transfer (system uses next_state)",
+      "Add state hash validation",
+      "Emit StepCompleted event"
+    ],
+    "acceptance_criteria": [
+      "Cannot create agent with m > 1",
+      "Agent output includes both move and next_state",
+      "System uses next_state for subsequent agent",
+      "State hash prevents undetected corruption"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-001-05",
+    "epic_id": "EPIC-001",
+    "epic_title": "Core MAKER Library",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "Parallel Voting Integration",
+    "description": "As a MAKER voting engine, I want to integrate parallel sampling, red-flagging, and voting, so that I can execute the complete first-to-ahead-by-k protocol.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 1,
+    "story_points": 8,
+    "blocked_by": ["STORY-001-01", "STORY-001-02", "STORY-001-03", "STORY-001-04"],
+    "tasks": [
+      "Create src/core/executor.rs",
+      "Implement vote_with_margin orchestration function",
+      "Orchestrate: collect → filter → vote → check winner",
+      "Handle timeout with max_samples limit",
+      "Define VoteResult struct",
+      "Write integration test with mock LLM",
+      "Write 3-disk Hanoi integration test"
+    ],
+    "acceptance_criteria": [
+      "Zero errors on 3-disk Towers of Hanoi (7 steps)",
+      "Voting converges within expected sample count",
+      "Red-flagged samples excluded from vote pool",
+      "Timeout returns error when max samples exceeded"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-004-01",
+    "epic_id": "EPIC-004",
+    "epic_title": "Event-Driven Observability",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "Event Definitions",
+    "description": "As a MAKER framework, I want to define all event types as an enum, so that I can emit structured, immutable events for observability.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 1,
+    "story_points": 2,
+    "blocked_by": [],
+    "tasks": [
+      "Create src/events/mod.rs",
+      "Define MakerEvent enum with serde(tag = type)",
+      "Add variants: SampleRequested, SampleCompleted, RedFlagTriggered, VoteCast, VoteDecided, StepCompleted",
+      "Include timestamp in all events",
+      "Derive Clone, Debug, Serialize, Deserialize",
+      "Write serialization tests"
+    ],
+    "acceptance_criteria": [
+      "All events serialize to JSON with type tag",
+      "Events are immutable",
+      "Clone implementation is efficient",
+      "Timestamp precision sufficient for latency tracking"
+    ],
+    "context_files": ["PROJECT-CONTEXT.md"]
+  },
+  {
+    "id": "STORY-004-02",
+    "epic_id": "EPIC-004",
+    "epic_title": "Event-Driven Observability",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "EventBus Implementation",
+    "description": "As a MAKER framework, I want a central EventBus for publishing and subscribing to events, so that core logic is decoupled from observability.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 1,
+    "story_points": 3,
+    "blocked_by": ["STORY-004-01"],
+    "tasks": [
+      "Create src/events/bus.rs",
+      "Implement EventBus with tokio::sync::broadcast",
+      "Implement emit method (fire-and-forget)",
+      "Implement subscribe method",
+      "Configure channel capacity (1024)",
+      "Handle lagging receivers gracefully"
+    ],
+    "acceptance_criteria": [
+      "Multiple subscribers receive all events",
+      "Emit is non-blocking",
+      "Lagging receivers don't block emitters",
+      "Integration test: 1000 events to all subscribers"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-004-03",
+    "epic_id": "EPIC-004",
+    "epic_title": "Event-Driven Observability",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "Logging Observer",
+    "description": "As a MAKER operator, I want structured logs for all events at appropriate log levels, so that I can debug issues and track progress.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 1,
+    "story_points": 3,
+    "blocked_by": ["STORY-004-02"],
+    "tasks": [
+      "Create src/events/observers/logging.rs",
+      "Add tracing and tracing-subscriber dependencies",
+      "Implement LoggingObserver",
+      "Map events to log levels (TRACE, DEBUG, INFO, WARN, ERROR)",
+      "Use tracing macros with structured fields",
+      "Support RUST_LOG filtering",
+      "Spawn observer task"
+    ],
+    "acceptance_criteria": [
+      "VoteDecided logged at INFO with step_id, winner, votes",
+      "RedFlagTriggered logged at WARN with flag_type",
+      "SampleRequested/Completed logged at DEBUG",
+      "Logs are machine-parseable"
+    ],
+    "context_files": ["PROJECT-CONTEXT.md"]
+  },
+  {
+    "id": "STORY-004-04",
+    "epic_id": "EPIC-004",
+    "epic_title": "Event-Driven Observability",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "Metrics Observer",
+    "description": "As a MAKER operator, I want Prometheus-compatible metrics for votes, red-flags, latency, and cost, so that I can monitor performance.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 1,
+    "story_points": 5,
+    "blocked_by": ["STORY-004-02"],
+    "tasks": [
+      "Create src/events/observers/metrics.rs",
+      "Add metrics crate dependency",
+      "Implement MetricsObserver",
+      "Track counters: maker_votes_total, maker_red_flags_total",
+      "Track histograms: maker_api_latency_ms, maker_cost_per_step_usd",
+      "Implement report() for stdout export"
+    ],
+    "acceptance_criteria": [
+      "Metrics increment on corresponding events",
+      "Histogram buckets appropriate for API latency",
+      "Cost metric includes model-specific pricing",
+      "Metrics queryable via stdout report"
+    ],
+    "context_files": ["SUCCESS-METRICS.md"]
+  },
+  {
+    "id": "STORY-005-01",
+    "epic_id": "EPIC-005",
+    "epic_title": "Testing Infrastructure",
+    "phase": 1,
+    "phase_name": "Core MAKER Algorithms",
+    "story_title": "Property-Based Testing Framework",
+    "description": "As a MAKER developer, I want property-based tests for probabilistic guarantees, so that I can validate correctness across wide input ranges.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 1,
+    "story_points": 5,
+    "blocked_by": [],
+    "tasks": [
+      "Add proptest dependency",
+      "Create tests/properties.rs",
+      "Write property: k_min increases logarithmically with s",
+      "Write property: voting converges for p > 0.5",
+      "Write property: red-flag rate < threshold",
+      "Configure 1000 iterations per property"
+    ],
+    "acceptance_criteria": [
+      "Properties pass with 1000+ random inputs",
+      "Shrinking produces minimal failing cases",
+      "Tests complete in <60s on CI",
+      "Failures include reproducible seeds"
+    ],
+    "context_files": ["BEST-PRACTICES.md"]
+  },
+  {
+    "id": "STORY-002-01",
+    "epic_id": "EPIC-002",
+    "epic_title": "LLM Provider Abstraction",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "LlmClient Trait",
+    "description": "As a MAKER framework, I want a unified trait for LLM API calls, so that voting logic is provider-agnostic.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 3,
+    "blocked_by": [],
+    "tasks": [
+      "Create src/llm/mod.rs",
+      "Add async-trait dependency",
+      "Define LlmResponse struct (content, tokens_used, latency)",
+      "Define TokenUsage struct (input, output)",
+      "Define LlmError enum (RateLimited, Timeout, NetworkError, ApiError)",
+      "Define LlmClient trait with async generate method",
+      "Make trait object-safe"
+    ],
+    "acceptance_criteria": [
+      "Trait is async and object-safe",
+      "Response includes all fields for event emission",
+      "LlmError variants cover all failure modes",
+      "Doc comments explain retry strategy"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-002-02",
+    "epic_id": "EPIC-002",
+    "epic_title": "LLM Provider Abstraction",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "Ollama Client Implementation",
+    "description": "As a MAKER user, I want to use local Ollama models for cost-free inference, so that I can develop without cloud API costs.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 5,
+    "blocked_by": ["STORY-002-01"],
+    "tasks": [
+      "Create src/llm/ollama.rs",
+      "Add reqwest dependency",
+      "Implement OllamaClient struct",
+      "Implement LlmClient trait (POST /api/generate)",
+      "Parse response for content and token counts",
+      "Handle connection refused",
+      "Implement timeout",
+      "Write integration test"
+    ],
+    "acceptance_criteria": [
+      "Successful generation returns Response with content",
+      "Token counts parsed from response",
+      "Connection failure returns NetworkError",
+      "Timeout returns Timeout error"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-002-03",
+    "epic_id": "EPIC-002",
+    "epic_title": "LLM Provider Abstraction",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "OpenAI Client Implementation",
+    "description": "As a MAKER user, I want to use OpenAI GPT models for cloud inference, so that I can balance performance and cost.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 5,
+    "blocked_by": ["STORY-002-01"],
+    "tasks": [
+      "Create src/llm/openai.rs",
+      "Add async-openai dependency",
+      "Implement OpenAiClient struct",
+      "Load API key from OPENAI_API_KEY env",
+      "Implement LlmClient trait (chat.completions.create)",
+      "Extract content and token usage",
+      "Handle 429 rate limits with Retry-After"
+    ],
+    "acceptance_criteria": [
+      "API key loaded from env var",
+      "Successful generation returns correct token counts",
+      "429 errors return RateLimited with retry_after",
+      "Integration test passes"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-002-04",
+    "epic_id": "EPIC-002",
+    "epic_title": "LLM Provider Abstraction",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "Anthropic Client Implementation",
+    "description": "As a MAKER user, I want to use Anthropic Claude Haiku for lowest-cost cloud inference.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 5,
+    "blocked_by": ["STORY-002-01"],
+    "tasks": [
+      "Create src/llm/anthropic.rs",
+      "Implement AnthropicClient struct",
+      "Load API key from ANTHROPIC_API_KEY env",
+      "Implement LlmClient trait (messages API)",
+      "Extract content and usage tokens",
+      "Handle rate limits",
+      "Set cost pricing"
+    ],
+    "acceptance_criteria": [
+      "API key loaded from env var",
+      "Token usage includes input/output counts",
+      "Cost calculation matches pricing",
+      "Rate limit handling works"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-002-05",
+    "epic_id": "EPIC-002",
+    "epic_title": "LLM Provider Abstraction",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "Exponential Backoff Retry Strategy",
+    "description": "As a MAKER framework, I want automatic retry with exponential backoff for transient failures.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 5,
+    "blocked_by": ["STORY-002-01"],
+    "tasks": [
+      "Create src/llm/retry.rs",
+      "Define RetryConfig struct",
+      "Implement call_with_retry wrapper function",
+      "Implement exponential backoff (1s, 2s, 4s...)",
+      "Add jitter (0-25%)",
+      "Respect Retry-After header",
+      "Classify retryable vs non-retryable errors"
+    ],
+    "acceptance_criteria": [
+      "429 errors retry with exponential + jitter",
+      "Retry-After header overrides exponential",
+      "Non-retryable errors fail immediately",
+      "Max retries prevents infinite loops"
+    ],
+    "context_files": ["BEST-PRACTICES.md"]
+  },
+  {
+    "id": "STORY-002-06",
+    "epic_id": "EPIC-002",
+    "epic_title": "LLM Provider Abstraction",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "Parallel Sampling with Tokio",
+    "description": "As a MAKER voting engine, I want to collect k samples in parallel, so that voting latency is minimized.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 5,
+    "blocked_by": ["STORY-002-01"],
+    "tasks": [
+      "Create src/llm/sampler.rs",
+      "Implement collect_samples function",
+      "Use tokio::task::JoinSet for bounded concurrency",
+      "Temperature strategy: T=0 first, T=0.1 rest",
+      "Emit SampleRequested/Completed events",
+      "Handle timeout (cancel remaining tasks)"
+    ],
+    "acceptance_criteria": [
+      "Latency ≈ 1x API call time (not n×)",
+      "First sample deterministic (T=0)",
+      "Subsequent samples diverse (T=0.1)",
+      "Benchmark: 10 parallel ≈ 1.2x single"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-003-01",
+    "epic_id": "EPIC-003",
+    "epic_title": "MCP Server Implementation",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "rmcp Server Setup",
+    "description": "As a MAKER MCP server, I want to initialize rmcp with stdio transport, so that Claude Code can discover and invoke MAKER tools.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 3,
+    "blocked_by": [],
+    "tasks": [
+      "Add rmcp dependency (v0.13+)",
+      "Create src/bin/maker-mcp.rs",
+      "Initialize rmcp Server with stdio transport",
+      "Register all 4 tools",
+      "Handle shutdown signals (SIGINT, SIGTERM)",
+      "Log lifecycle events",
+      "Add to Cargo.toml [[bin]]"
+    ],
+    "acceptance_criteria": [
+      "Server starts and listens on stdio",
+      "Tools listed in MCP discovery",
+      "Server logs initialization and shutdown",
+      "Ctrl+C triggers graceful shutdown"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-003-02",
+    "epic_id": "EPIC-003",
+    "epic_title": "MCP Server Implementation",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "maker/vote Tool",
+    "description": "As a Claude Code user, I want to invoke maker/vote with a prompt and k_margin, so that I get the voted winner.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 5,
+    "blocked_by": ["STORY-003-01", "STORY-001-05", "STORY-002-06"],
+    "tasks": [
+      "Create src/mcp/tools/vote.rs",
+      "Define VoteRequest struct",
+      "Define VoteResponse struct",
+      "Implement vote_handler",
+      "Validate k_margin >= 1",
+      "Call vote_with_margin",
+      "Register with rmcp server"
+    ],
+    "acceptance_criteria": [
+      "Valid request returns VoteResponse with winner",
+      "Invalid k_margin returns error",
+      "Cost calculated from LLM provider",
+      "Integration test passes"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-003-03",
+    "epic_id": "EPIC-003",
+    "epic_title": "MCP Server Implementation",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "maker/validate Tool",
+    "description": "As a Claude Code user, I want to invoke maker/validate to check if a response passes red-flagging.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 3,
+    "blocked_by": ["STORY-003-01", "STORY-001-03"],
+    "tasks": [
+      "Create src/mcp/tools/validate.rs",
+      "Define ValidateRequest struct",
+      "Define ValidateResponse struct",
+      "Implement validate_handler",
+      "Return ALL triggered red-flags",
+      "Register with rmcp server"
+    ],
+    "acceptance_criteria": [
+      "Valid response returns valid: true, red_flags: []",
+      "Invalid response returns valid: false with red_flags",
+      "Multiple red-flags returned if multiple violations"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-003-04",
+    "epic_id": "EPIC-003",
+    "epic_title": "MCP Server Implementation",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "maker/calibrate Tool",
+    "description": "As a Claude Code user, I want to invoke maker/calibrate to estimate per-step success rate (p).",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 5,
+    "blocked_by": ["STORY-003-01", "STORY-001-01"],
+    "tasks": [
+      "Create src/mcp/tools/calibrate.rs",
+      "Define CalibrateRequest struct",
+      "Define CalibrateResponse struct",
+      "Implement calibrate_handler",
+      "Calculate p = correct / total",
+      "Calculate Wilson score confidence interval",
+      "Recommend k_min",
+      "Register with rmcp server"
+    ],
+    "acceptance_criteria": [
+      "p_estimate = correct_samples / total_samples",
+      "Confidence interval at 95% level",
+      "Recommendation includes suggested k"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-003-05",
+    "epic_id": "EPIC-003",
+    "epic_title": "MCP Server Implementation",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "maker/configure Tool",
+    "description": "As a Claude Code user, I want to invoke maker/configure to set default k, temperature, and token limits.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 2,
+    "story_points": 3,
+    "blocked_by": ["STORY-003-01"],
+    "tasks": [
+      "Create src/mcp/tools/configure.rs",
+      "Define ConfigRequest struct",
+      "Define ConfigResponse struct",
+      "Define Config struct with defaults",
+      "Store config in ServerState (Arc<RwLock>)",
+      "Use configured defaults in vote tool",
+      "Register with rmcp server"
+    ],
+    "acceptance_criteria": [
+      "Configuration updated in server state",
+      "Subsequent vote calls use configured defaults",
+      "Response shows current configuration"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-003-06",
+    "epic_id": "EPIC-003",
+    "epic_title": "MCP Server Implementation",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "Schema Validation for Security",
+    "description": "As a MAKER MCP server, I want to validate all tool inputs and LLM outputs against schemas.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 2,
+    "story_points": 3,
+    "blocked_by": ["STORY-003-01"],
+    "tasks": [
+      "Define JSON schemas for all request/response types",
+      "Add serde(deny_unknown_fields) to requests",
+      "Validate LLM outputs via red-flag parsers",
+      "Log validation failures at WARN level",
+      "Document security model in README"
+    ],
+    "acceptance_criteria": [
+      "Invalid JSON inputs rejected",
+      "LLM outputs validated before inclusion",
+      "Security audit: no injection bypasses"
+    ],
+    "context_files": ["RISK-REGISTER.md"]
+  },
+  {
+    "id": "STORY-008-01",
+    "epic_id": "EPIC-008",
+    "epic_title": "Security & Guardrails",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "Schema Enforcement for Agent Outputs",
+    "description": "As a MAKER framework, I want to enforce strict JSON schemas on all agent outputs.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 2,
+    "story_points": 3,
+    "blocked_by": ["STORY-001-03"],
+    "tasks": [
+      "Define expected schema for agent outputs (move, next_state)",
+      "Add red-flag rule for missing fields",
+      "Add red-flag rule for unexpected fields",
+      "Log schema violations at WARN with hash",
+      "Document schema in README"
+    ],
+    "acceptance_criteria": [
+      "Missing next_state triggers FormatViolation",
+      "Unexpected fields rejected in strict mode",
+      "Schema violations logged"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-008-02",
+    "epic_id": "EPIC-008",
+    "epic_title": "Security & Guardrails",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "Prompt Injection Protection",
+    "description": "As a MAKER MCP server, I want to sanitize and validate all user-provided prompts.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 2,
+    "story_points": 3,
+    "blocked_by": ["STORY-003-01"],
+    "tasks": [
+      "Add prompt length validation (max 10K chars)",
+      "Add suspicious pattern detection",
+      "Log rejected prompts with hash only",
+      "Document user responsibility",
+      "Create SECURITY.md"
+    ],
+    "acceptance_criteria": [
+      "Prompt > 10K chars rejected",
+      "Suspicious patterns logged",
+      "SECURITY.md created"
+    ],
+    "context_files": ["RISK-REGISTER.md"]
+  },
+  {
+    "id": "STORY-008-03",
+    "epic_id": "EPIC-008",
+    "epic_title": "Security & Guardrails",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "Microagent Isolation Enforcement",
+    "description": "As a MAKER framework, I want to enforce m=1 microagent constraint.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 2,
+    "story_points": 2,
+    "blocked_by": ["STORY-001-04"],
+    "tasks": [
+      "Enforce at type level (no history in Subtask)",
+      "Validate state transfer format",
+      "Ensure agent only receives current state",
+      "Document isolation guarantees"
+    ],
+    "acceptance_criteria": [
+      "Agent context with history triggers error",
+      "Agent only receives current step state",
+      "State corruption detected before next agent"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-005-03",
+    "epic_id": "EPIC-005",
+    "epic_title": "Testing Infrastructure",
+    "phase": 2,
+    "phase_name": "MCP Server Integration",
+    "story_title": "MCP Protocol Compliance Tests",
+    "description": "As a MAKER MCP server, I want integration tests validating MCP protocol compliance.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 2,
+    "story_points": 5,
+    "blocked_by": ["STORY-003-01", "STORY-003-02", "STORY-003-03", "STORY-003-04", "STORY-003-05"],
+    "tasks": [
+      "Create tests/mcp_integration.rs",
+      "Write test for each MCP tool",
+      "Test schema validation (invalid inputs rejected)",
+      "Test successful flows",
+      "Use mock LLM responses",
+      "Test MCP protocol lifecycle"
+    ],
+    "acceptance_criteria": [
+      "All 4 tools pass integration tests",
+      "Invalid JSON rejected with descriptive errors",
+      "Tool outputs match declared schema",
+      "Tests run against actual rmcp server"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-006-01",
+    "epic_id": "EPIC-006",
+    "epic_title": "Demo & Benchmarks",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "Towers of Hanoi Task Decomposition",
+    "description": "As a MAKER demo, I want to decompose Towers of Hanoi into microagent steps.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 3,
+    "story_points": 5,
+    "blocked_by": ["STORY-001-04"],
+    "tasks": [
+      "Create examples/hanoi/mod.rs",
+      "Implement HanoiState struct",
+      "Implement is_legal_move method",
+      "Implement apply_move method",
+      "Implement HanoiDecomposer for TaskDecomposer trait",
+      "Precompute ground truth for validation"
+    ],
+    "acceptance_criteria": [
+      "3-disk Hanoi generates 7 steps",
+      "10-disk Hanoi generates 1,023 steps",
+      "Each step's next_state matches ground truth",
+      "Unit test: only legal moves accepted"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-006-02",
+    "epic_id": "EPIC-006",
+    "epic_title": "Demo & Benchmarks",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "End-to-End 10-Disk Hanoi Execution",
+    "description": "As a MAKER user, I want to execute 10-disk Hanoi with voting to validate zero-error execution.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 3,
+    "story_points": 5,
+    "blocked_by": ["STORY-006-01", "STORY-001-05", "STORY-002-06"],
+    "tasks": [
+      "Create examples/hanoi_demo.rs",
+      "Implement run_hanoi function",
+      "Execute all 2^n - 1 steps with voting (k=3-4)",
+      "Validate each step matches ground truth",
+      "Collect metrics (cost, latency, red-flag rate)",
+      "Log final summary",
+      "Add CLI"
+    ],
+    "acceptance_criteria": [
+      "Zero errors (all 1,023 steps match ground truth)",
+      "k=3 or k=4 achieves 95%+ step-wise success",
+      "Total cost logged in USD",
+      "Execution completes"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-006-03",
+    "epic_id": "EPIC-006",
+    "epic_title": "Demo & Benchmarks",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "Cost Scaling Benchmark Suite",
+    "description": "As a MAKER developer, I want to benchmark cost scaling to validate Θ(s ln s) complexity.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 3,
+    "story_points": 5,
+    "blocked_by": ["STORY-006-02"],
+    "tasks": [
+      "Create benches/cost_scaling.rs",
+      "Run Hanoi for n ∈ {3, 5, 7, 10, 15}",
+      "Collect s, k, total_samples, cost, time",
+      "Fit to Θ(s ln s) curve",
+      "Statistical test: R² > 0.95",
+      "Export results to JSON"
+    ],
+    "acceptance_criteria": [
+      "Benchmark completes for all n values",
+      "Fit shows Θ(s ln s) relationship (R² > 0.95)",
+      "Statistical test passes (within 20%)",
+      "Results exported to JSON"
+    ],
+    "context_files": ["docs/technical-implementation-manual.txt"]
+  },
+  {
+    "id": "STORY-006-04",
+    "epic_id": "EPIC-006",
+    "epic_title": "Demo & Benchmarks",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "Comparison to Naive Retry",
+    "description": "As a MAKER evangelist, I want to compare MAKER cost to naive retry approaches.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 3,
+    "story_points": 3,
+    "blocked_by": ["STORY-006-02"],
+    "tasks": [
+      "Implement naive retry baseline",
+      "Run naive retry on 3, 5, 7 disk Hanoi",
+      "Compare MAKER vs. naive cost",
+      "Calculate savings percentage",
+      "Add comparison to README"
+    ],
+    "acceptance_criteria": [
+      "Naive cost > MAKER cost by 60%+",
+      "Comparison documented in README",
+      "Results reproducible"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-007-01",
+    "epic_id": "EPIC-007",
+    "epic_title": "Documentation",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "README.md Update",
+    "description": "As a prospective MAKER user, I want a comprehensive README.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 3,
+    "story_points": 5,
+    "blocked_by": ["STORY-006-02"],
+    "tasks": [
+      "Update README with implementation details",
+      "Add quickstart (cargo install, configure Claude Code)",
+      "Add architecture diagram (Mermaid)",
+      "Add MCP tool reference with examples",
+      "Add benchmarks link",
+      "Update badges (CI, coverage, crates.io)"
+    ],
+    "acceptance_criteria": [
+      "README under 500 lines",
+      "Quickstart works in <5 minutes",
+      "All code examples tested",
+      "Citations include URLs"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-007-02",
+    "epic_id": "EPIC-007",
+    "epic_title": "Documentation",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "API Documentation (rustdoc)",
+    "description": "As a MAKER library user, I want comprehensive API documentation.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 3,
+    "story_points": 3,
+    "blocked_by": [],
+    "tasks": [
+      "Add doc comments to all public APIs",
+      "Include examples in doc comments",
+      "Document error types",
+      "Run cargo doc --no-deps",
+      "Ensure doc tests pass"
+    ],
+    "acceptance_criteria": [
+      "All public APIs have doc comments with examples",
+      "Doc tests compile and pass",
+      "cargo doc generates complete documentation"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-007-03",
+    "epic_id": "EPIC-007",
+    "epic_title": "Documentation",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "Example Integrations",
+    "description": "As a MAKER user, I want example integration code.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 3,
+    "story_points": 3,
+    "blocked_by": ["STORY-006-01"],
+    "tasks": [
+      "Create examples/hanoi.rs",
+      "Create examples/custom_task.rs",
+      "Create examples/README.md",
+      "Ensure all examples compile",
+      "Link from main README"
+    ],
+    "acceptance_criteria": [
+      "All examples compile and run",
+      "Examples demonstrate different features",
+      "Examples include comments",
+      "Examples linked from README"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-007-04",
+    "epic_id": "EPIC-007",
+    "epic_title": "Documentation",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "Security Documentation",
+    "description": "As a MAKER operator, I want clear security documentation.",
+    "owner": "Project Maintainer",
+    "priority": "P1",
+    "sprint": 3,
+    "story_points": 2,
+    "blocked_by": ["STORY-008-02"],
+    "tasks": [
+      "Add Security section to README",
+      "Create SECURITY.md (if not done in STORY-008-02)",
+      "Document MCP risks and mitigations",
+      "Document responsible disclosure process"
+    ],
+    "acceptance_criteria": [
+      "Security section covers MCP risks",
+      "SECURITY.md follows GitHub format",
+      "Responsible disclosure documented"
+    ],
+    "context_files": ["RISK-REGISTER.md"]
+  },
+  {
+    "id": "STORY-007-05",
+    "epic_id": "EPIC-007",
+    "epic_title": "Documentation",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "CHANGELOG.md for v0.1.0",
+    "description": "As a MAKER user, I want a CHANGELOG tracking version history.",
+    "owner": "Project Maintainer",
+    "priority": "P2",
+    "sprint": 3,
+    "story_points": 1,
+    "blocked_by": [],
+    "tasks": [
+      "Update CHANGELOG.md for v0.1.0",
+      "Move [Unreleased] to [0.1.0]",
+      "List implementation features",
+      "List known limitations",
+      "Follow Keep a Changelog format"
+    ],
+    "acceptance_criteria": [
+      "CHANGELOG follows Keep a Changelog format",
+      "All v0.1.0 features listed",
+      "ISO 8601 date format"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-005-02",
+    "epic_id": "EPIC-005",
+    "epic_title": "Testing Infrastructure",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "Monte Carlo Cost Validation",
+    "description": "As a MAKER developer, I want Monte Carlo simulations to validate cost scaling.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 3,
+    "story_points": 5,
+    "blocked_by": ["STORY-001-01", "STORY-001-02"],
+    "tasks": [
+      "Create tests/monte_carlo.rs",
+      "Implement simulate_task_cost function",
+      "Run simulations for s ∈ {100, 1000, 10000}",
+      "Calculate mean, std dev, 95% CI",
+      "Compare to theoretical Θ(s ln s)",
+      "Compare MAKER vs. naive retry"
+    ],
+    "acceptance_criteria": [
+      "Cost ratio matches s_ratio * ln(s_ratio) within 20%",
+      "MAKER cost < naive by 60%+ for 1000-step tasks",
+      "Simulation completes in <5 minutes",
+      "Results logged with confidence intervals"
+    ],
+    "context_files": []
+  },
+  {
+    "id": "STORY-005-04",
+    "epic_id": "EPIC-005",
+    "epic_title": "Testing Infrastructure",
+    "phase": 3,
+    "phase_name": "Validation & Hardening",
+    "story_title": "CI/CD Pipeline with Coverage Enforcement",
+    "description": "As a MAKER maintainer, I want automated testing and coverage enforcement.",
+    "owner": "Project Maintainer",
+    "priority": "P0",
+    "sprint": 3,
+    "story_points": 3,
+    "blocked_by": [],
+    "tasks": [
+      "Create .github/workflows/ci.yml",
+      "Run cargo test on PRs and pushes",
+      "Run cargo-tarpaulin for coverage",
+      "Fail CI if coverage < 95%",
+      "Publish coverage to artifacts",
+      "Configure branch protection"
+    ],
+    "acceptance_criteria": [
+      "CI runs on every PR and push",
+      "Tests complete in <5 minutes",
+      "Coverage report viewable",
+      "PRs blocked if coverage < 95%"
+    ],
+    "context_files": []
+  }
+]

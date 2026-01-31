@@ -3,3 +3,8 @@ node_modules/
 .fastembed_cache/
 workspace/slides/*.png
 workspace/*.pptx
+
+
+# Added by cargo
+
+/target
