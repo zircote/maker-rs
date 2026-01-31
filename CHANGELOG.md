@@ -48,9 +48,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `SECURITY.md` with vulnerability reporting process
 
 #### Testing
+- 385+ tests across unit, integration, and property-based suites
 - Property-based tests via `proptest` (15 properties, 1000+ iterations each)
 - MCP integration tests (35 tests covering all 4 tools)
 - Monte Carlo cost validation (Θ(s ln s) scaling verified)
+- HTTP mock tests via `wiremock` for all LLM providers (OpenAI, Anthropic, Ollama)
 - Example tests (21 tests in hanoi example)
 
 #### Examples & Benchmarks
@@ -61,12 +63,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 #### CI/CD
 - GitHub Actions workflow: test, lint, coverage, documentation
-- Coverage threshold enforcement
+- Coverage threshold enforcement (90% line coverage, excluding binaries)
 
 ### Known Limitations
 - Parallel sampling via async LLM clients not yet integrated into the synchronous voting executor
 - Semantic matching for non-deterministic tasks (e.g., coding) not yet implemented
-- Coverage enforcement set to 80% (target 95% requires additional integration test expansion)
+- MCP tool names use `/` separator (e.g., `maker/vote`) which triggers rmcp naming warnings
 
 ## [0.0.0] - 2026-01-30
 
