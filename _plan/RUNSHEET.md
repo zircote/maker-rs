@@ -296,7 +296,7 @@
 - [x] Zero errors on 10-disk Hanoi (1,023 steps) ✅
 - [x] Cost scaling Θ(s ln s) validated empirically ✅
 - [x] README complete with quickstart ✅
-- [ ] v0.1.0 GitHub release published
+- [x] v0.1.0 GitHub release published ✅
 
 ---
 
@@ -313,8 +313,8 @@
 - [x] CHANGELOG updated for v0.1.0 ✅
 - [x] SECURITY.md created ✅
 - [x] CI/CD pipeline green ✅
-- [ ] Git tag: `git tag -a v0.1.0 -m "MAKER Framework v0.1.0 MVP"`
-- [ ] GitHub release created
+- [x] Git tag: `git tag -a v0.1.0 -m "MAKER Framework v0.1.0 MVP"` ✅
+- [x] GitHub release created ✅ (https://github.com/zircote/maker-rs/releases/tag/v0.1.0)
 
 ---
 
@@ -341,6 +341,6 @@ cargo publish
 
 ---
 
-**Runsheet Status:** Ready for Execution
+**Runsheet Status:** ✅ COMPLETE
 **Start Date:** 2026-01-30
 **Target Release:** Day 14
