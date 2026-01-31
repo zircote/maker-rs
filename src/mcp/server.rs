@@ -3,6 +3,7 @@
 //! Provides the core server handler for rmcp, managing server state
 //! and routing tool calls to their respective handlers.
 
+use crate::llm::ensemble::EnsembleConfigRequest;
 use crate::mcp::tools::{
     calibrate::{execute_calibrate, CalibrateRequest},
     configure::{apply_config_updates, Config, ConfigRequest, ConfigResponse, MatcherConfig},
@@ -39,6 +40,9 @@ pub struct ServerConfig {
     pub k_bounds: (usize, usize),
     /// Active matcher configuration for candidate response grouping
     pub matcher: MatcherConfig,
+    /// Ensemble configuration for multi-model voting (None = single-model)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ensemble: Option<EnsembleConfigRequest>,
 }
 
 impl Default for ServerConfig {
@@ -53,6 +57,7 @@ impl Default for ServerConfig {
             ema_alpha: 0.1,
             k_bounds: (2, 10),
             matcher: MatcherConfig::default(),
+            ensemble: None,
         }
     }
 }
@@ -346,6 +351,7 @@ mod tests {
             provider: None,
             adaptive: None,
             matcher: None,
+            ensemble: None,
         };
 
         let result = server.vote(Parameters(request)).await;

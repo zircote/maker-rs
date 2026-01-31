@@ -97,6 +97,19 @@ pub enum MakerEvent {
         timestamp: SystemTime,
     },
 
+    /// An ensemble cost-tier escalation was triggered
+    EscalationTriggered {
+        /// Model being escalated from
+        from_model: String,
+        /// Model being escalated to
+        to_model: String,
+        /// Reason for escalation
+        reason: String,
+        /// When the escalation occurred
+        #[serde(with = "system_time_serde")]
+        timestamp: SystemTime,
+    },
+
     /// A step was completed in the task
     StepCompleted {
         /// Step number in the task sequence
@@ -172,6 +185,16 @@ impl MakerEvent {
         }
     }
 
+    /// Create an EscalationTriggered event
+    pub fn escalation_triggered(from_model: &str, to_model: &str, reason: &str) -> Self {
+        Self::EscalationTriggered {
+            from_model: from_model.to_string(),
+            to_model: to_model.to_string(),
+            reason: reason.to_string(),
+            timestamp: SystemTime::now(),
+        }
+    }
+
     /// Create a StepCompleted event
     pub fn step_completed(step_id: usize, state_hash: &str, cumulative_cost: f64) -> Self {
         Self::StepCompleted {
@@ -190,6 +213,7 @@ impl MakerEvent {
             Self::RedFlagTriggered { .. } => "RedFlagTriggered",
             Self::VoteCast { .. } => "VoteCast",
             Self::VoteDecided { .. } => "VoteDecided",
+            Self::EscalationTriggered { .. } => "EscalationTriggered",
             Self::StepCompleted { .. } => "StepCompleted",
         }
     }
@@ -202,6 +226,7 @@ impl MakerEvent {
             | Self::RedFlagTriggered { timestamp, .. }
             | Self::VoteCast { timestamp, .. }
             | Self::VoteDecided { timestamp, .. }
+            | Self::EscalationTriggered { timestamp, .. }
             | Self::StepCompleted { timestamp, .. } => *timestamp,
         }
     }

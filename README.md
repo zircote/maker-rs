@@ -100,6 +100,7 @@ src/
 │   ├── ollama.rs       # Local inference
 │   ├── openai.rs       # OpenAI API
 │   ├── anthropic.rs    # Anthropic API
+│   ├── ensemble.rs     # Multi-model ensemble configuration
 │   ├── retry.rs        # Exponential backoff with jitter
 │   └── sampler.rs      # Temperature-diverse parallel sampling
 ├── mcp/                # MCP server (rmcp v0.13)
@@ -228,6 +229,46 @@ cargo build --features code-matcher
 cargo test --features code-matcher
 ```
 
+## Multi-Model Ensemble
+
+MAKER supports voting across heterogeneous LLM models to decorrelate errors by model architecture, not just sampling temperature:
+
+| Strategy | Behavior | Use Case |
+|----------|----------|----------|
+| `RoundRobin` | Distribute samples evenly across models | Maximize diversity |
+| `CostAware` | Cheap models first, escalate on disagreement | Minimize cost |
+| `ReliabilityWeighted` | More samples from higher-reliability models | Optimize accuracy |
+
+Configure via MCP:
+
+```json
+{
+  "ensemble": {
+    "models": [
+      { "provider": "ollama", "model": "llama3", "cost_tier": "cheap" },
+      { "provider": "anthropic", "model": "claude-haiku", "cost_tier": "medium" }
+    ],
+    "strategy": "cost_aware"
+  }
+}
+```
+
+Cost-aware ensemble saves 87.5%+ vs single expensive model. See [BENCHMARKS.md](./BENCHMARKS.md) for full results.
+
+## Benchmarks
+
+MAKER includes domain-specific benchmarks covering coding tasks, math/logic, and data analysis:
+
+```bash
+cargo bench --bench coding_tasks        # 10 coding tasks (trivial to complex)
+cargo bench --bench math_logic          # Arithmetic, symbolic, logic, Hanoi
+cargo bench --bench data_analysis       # CSV, statistics, SQL, data cleaning
+cargo bench --bench cost_scaling        # Θ(s ln s) cost validation
+cargo bench --bench ensemble_comparison # Single-model vs ensemble comparison
+```
+
+See [BENCHMARKS.md](./BENCHMARKS.md) for detailed results and acceptance criteria.
+
 ## Development
 
 ```bash
@@ -240,6 +281,10 @@ cargo test --test mcp_integration    # MCP integration tests (35 tests)
 cargo test --test semantic_matching  # Semantic matching tests (16/25 tests)
 cargo test --test monte_carlo        # Monte Carlo cost validation
 cargo bench --bench cost_scaling     # Cost scaling benchmark
+cargo bench --bench coding_tasks    # Coding task benchmark
+cargo bench --bench math_logic      # Math & logic benchmark
+cargo bench --bench data_analysis   # Data analysis benchmark
+cargo bench --bench ensemble_comparison # Ensemble comparison
 cargo clippy                         # Lint
 cargo fmt --check                    # Format check
 cargo doc --no-deps --open           # API documentation

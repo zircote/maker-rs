@@ -21,6 +21,12 @@ pub use executor::{
     MockLlmClient, VoteConfig, VoteError as ExecutorVoteError, VoteResult,
 };
 pub use kmin::{calculate_kmin, KminError};
+pub use matcher::{default_matcher, CandidateMatcher, ExactMatcher};
+pub use matchers::embedding::{
+    cosine_similarity, EmbeddingClient, EmbeddingMatcher, MockEmbeddingClient,
+};
+pub use matchers::ollama_embedding::OllamaEmbeddingClient;
+pub use matchers::openai_embedding::OpenAiEmbeddingClient;
 pub use orchestration::{
     AgentOutput, AgentOutputError, MicroagentConfig, State, Subtask, TaskDecomposer,
     TaskOrchestrator,
@@ -29,12 +35,6 @@ pub use redflag::{
     validate_agent_output, validate_json_schema, validate_token_length, RedFlag, RedFlagValidator,
     StrictAgentOutput,
 };
-pub use matcher::{default_matcher, CandidateMatcher, ExactMatcher};
-pub use matchers::embedding::{
-    cosine_similarity, EmbeddingClient, EmbeddingMatcher, MockEmbeddingClient,
-};
-pub use matchers::ollama_embedding::OllamaEmbeddingClient;
-pub use matchers::openai_embedding::OpenAiEmbeddingClient;
 
 #[cfg(feature = "code-matcher")]
 pub use matchers::code::CodeMatcher;

@@ -541,7 +541,10 @@ fn test_adaptive_k_zero_errors_deterministic() {
         KEstimatorConfig::default(),
     );
 
-    assert_eq!(errors, 0, "Expected zero errors with adaptive k on high-p task");
+    assert_eq!(
+        errors, 0,
+        "Expected zero errors with adaptive k on high-p task"
+    );
 }
 
 #[test]
@@ -550,12 +553,8 @@ fn test_adaptive_k_cost_reduction_vs_static() {
     let steps = 30;
     let true_p = 0.85;
 
-    let (adaptive_samples, adaptive_errors) = simulate_adaptive_task(
-        true_p,
-        steps,
-        0.95,
-        KEstimatorConfig::default(),
-    );
+    let (adaptive_samples, adaptive_errors) =
+        simulate_adaptive_task(true_p, steps, 0.95, KEstimatorConfig::default());
 
     let (static_samples, static_errors) = simulate_static_task(true_p, steps, 4);
 

@@ -166,7 +166,11 @@ impl EmbeddingClient for OpenAiEmbeddingClient {
             let message = error_body
                 .map(|e| e.error.message)
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(format!("OpenAI API error ({}): {}", status.as_u16(), message));
+            return Err(format!(
+                "OpenAI API error ({}): {}",
+                status.as_u16(),
+                message
+            ));
         }
 
         let embedding_response: EmbeddingResponse = response

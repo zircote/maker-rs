@@ -118,6 +118,10 @@ pub struct VoteResult {
     pub k_used: usize,
     /// Current p-hat estimate (only set when adaptive mode is active)
     pub p_hat: Option<f64>,
+    /// Per-model cost breakdown (only set when ensemble mode is active)
+    pub cost_by_model: Option<HashMap<String, CostMetrics>>,
+    /// Ensemble metrics (only set when ensemble mode is active)
+    pub ensemble_metrics: Option<crate::llm::ensemble::EnsembleMetrics>,
 }
 
 /// Errors during voting execution
@@ -384,6 +388,8 @@ pub fn vote_with_margin(
                 elapsed: start.elapsed(),
                 k_used: k,
                 p_hat: None,
+                cost_by_model: None,
+                ensemble_metrics: None,
             });
         }
 

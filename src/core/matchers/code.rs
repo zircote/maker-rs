@@ -249,7 +249,8 @@ impl AlphaRenamer {
 
         let canonical = format!("v{}", self.counter);
         self.counter += 1;
-        self.mapping.insert(identifier.to_string(), canonical.clone());
+        self.mapping
+            .insert(identifier.to_string(), canonical.clone());
         canonical
     }
 }
@@ -447,10 +448,7 @@ mod tests {
 
         let canon_a = matcher.canonicalize(a);
         let canon_b = matcher.canonicalize(b);
-        assert_eq!(
-            canon_a, canon_b,
-            "Alpha-renamed JS code should match"
-        );
+        assert_eq!(canon_a, canon_b, "Alpha-renamed JS code should match");
     }
 
     // ==========================================
@@ -553,11 +551,7 @@ mod tests {
     #[test]
     fn test_reflexivity() {
         let matcher = CodeMatcher::with_default_threshold(CodeLanguage::Python);
-        let samples = vec![
-            "def f(x): return x",
-            "x = 1 + 2",
-            "print('hello')",
-        ];
+        let samples = vec!["def f(x): return x", "x = 1 + 2", "print('hello')"];
         for s in samples {
             assert!(
                 matcher.are_equivalent(s, s),

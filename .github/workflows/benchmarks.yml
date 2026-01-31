@@ -1,0 +1,40 @@
+name: Benchmarks
+
+on:
+  # schedule:
+  #   - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmarks:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run coding tasks benchmark
+        run: cargo bench --bench coding_tasks 2>&1 | tee bench_coding.txt
+
+      - name: Run math & logic benchmark
+        run: cargo bench --bench math_logic 2>&1 | tee bench_math.txt
+
+      - name: Run data analysis benchmark
+        run: cargo bench --bench data_analysis 2>&1 | tee bench_data.txt
+
+      - name: Run cost scaling benchmark
+        run: cargo bench --bench cost_scaling 2>&1 | tee bench_cost.txt
+
+      - name: Run ensemble comparison benchmark
+        run: cargo bench --bench ensemble_comparison 2>&1 | tee bench_ensemble.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: bench_*.txt
+          retention-days: 90

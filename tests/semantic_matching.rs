@@ -32,13 +32,19 @@ fn equivalent_python_pairs() -> Vec<(&'static str, &'static str)> {
         // 2. Whitespace differences
         ("x=10\ny=x+5", "x = 10\ny = x + 5"),
         // 3. Different function names
-        ("def foo(x):\n    return x + 1", "def bar(y):\n    return y + 1"),
+        (
+            "def foo(x):\n    return x + 1",
+            "def bar(y):\n    return y + 1",
+        ),
         // 4. Comment differences
         ("# compute sum\nx = 1 + 2", "# add values\nx = 1 + 2"),
         // 5. Blank line differences
         ("x = 1\n\n\ny = 2", "x = 1\ny = 2"),
         // 6. Different parameter names
-        ("def f(a, b):\n    return a + b", "def f(x, y):\n    return x + y"),
+        (
+            "def f(a, b):\n    return a + b",
+            "def f(x, y):\n    return x + y",
+        ),
         // 7. Trailing whitespace
         ("x = 42  ", "x = 42"),
         // 8. Comments vs no comments
@@ -61,15 +67,9 @@ fn equivalent_python_pairs() -> Vec<(&'static str, &'static str)> {
             "for j in range(10):\n    print(j)",
         ),
         // 13. Same logic, different temp var names
-        (
-            "tmp = a\na = b\nb = tmp",
-            "temp = a\na = b\nb = temp",
-        ),
+        ("tmp = a\na = b\nb = tmp", "temp = a\na = b\nb = temp"),
         // 14. List comprehension variable rename
-        (
-            "[x * 2 for x in range(5)]",
-            "[y * 2 for y in range(5)]",
-        ),
+        ("[x * 2 for x in range(5)]", "[y * 2 for y in range(5)]"),
         // 15. Function with renamed locals
         (
             "def sort(lst):\n    n = len(lst)\n    return sorted(lst)",
@@ -93,7 +93,10 @@ fn equivalent_rust_pairs() -> Vec<(&'static str, &'static str)> {
         // 2. Whitespace differences
         ("let x=10;", "let x = 10;"),
         // 3. Function renaming
-        ("fn foo(x: i32) -> i32 { x + 1 }", "fn bar(y: i32) -> i32 { y + 1 }"),
+        (
+            "fn foo(x: i32) -> i32 { x + 1 }",
+            "fn bar(y: i32) -> i32 { y + 1 }",
+        ),
         // 4. Comment differences
         ("// compute\nlet x = 42;", "// calculate\nlet x = 42;"),
         // 5. Doc comment vs regular comment
@@ -120,10 +123,7 @@ fn equivalent_rust_pairs() -> Vec<(&'static str, &'static str)> {
             "for j in 0..10 { println!(\"{}\", j); }",
         ),
         // 12. Closure variable renaming
-        (
-            "let f = |x| x + 1;",
-            "let g = |y| y + 1;",
-        ),
+        ("let f = |x| x + 1;", "let g = |y| y + 1;"),
         // 15. if/else with renamed vars
         (
             "let result = if flag { a } else { b };",
@@ -135,10 +135,7 @@ fn equivalent_rust_pairs() -> Vec<(&'static str, &'static str)> {
             "impl Foo { fn baz(&self) -> i32 { 42 } }",
         ),
         // 17. Tuple destructuring renaming
-        (
-            "let (a, b) = (1, 2);",
-            "let (x, y) = (1, 2);",
-        ),
+        ("let (a, b) = (1, 2);", "let (x, y) = (1, 2);"),
     ]
 }
 
@@ -146,11 +143,17 @@ fn equivalent_rust_pairs() -> Vec<(&'static str, &'static str)> {
 fn equivalent_javascript_pairs() -> Vec<(&'static str, &'static str)> {
     vec![
         // 1. Variable renaming
-        ("const x = 10;\nconst y = x + 5;", "const a = 10;\nconst b = a + 5;"),
+        (
+            "const x = 10;\nconst y = x + 5;",
+            "const a = 10;\nconst b = a + 5;",
+        ),
         // 2. Whitespace
         ("const x=10;", "const x = 10;"),
         // 3. Function renaming
-        ("function foo(x) { return x + 1; }", "function bar(y) { return y + 1; }"),
+        (
+            "function foo(x) { return x + 1; }",
+            "function bar(y) { return y + 1; }",
+        ),
         // 4. Comment differences
         ("// compute\nconst x = 42;", "// calculate\nconst x = 42;"),
         // 5. Arrow function variable rename
@@ -177,10 +180,7 @@ fn equivalent_javascript_pairs() -> Vec<(&'static str, &'static str)> {
             "for (let j = 0; j < 10; j++) { console.log(j); }",
         ),
         // 12. Callback variable rename
-        (
-            "arr.map(item => item * 2);",
-            "arr.map(elem => elem * 2);",
-        ),
+        ("arr.map(item => item * 2);", "arr.map(elem => elem * 2);"),
         // 14. Async function rename
         (
             "async function fetchData(url) { return await fetch(url); }",
@@ -362,7 +362,10 @@ fn equivalent_nl_pairs() -> Vec<(&'static str, &'static str)> {
         // 1. Same meaning, different wording
         ("The answer is 4.", "The result is 4."),
         // 2. Reordered sentence
-        ("Python is a programming language.", "A programming language is Python."),
+        (
+            "Python is a programming language.",
+            "A programming language is Python.",
+        ),
         // 3. Synonym substitution
         ("The function returns true.", "The function yields true."),
         // 4. Active vs passive
@@ -374,29 +377,47 @@ fn equivalent_nl_pairs() -> Vec<(&'static str, &'static str)> {
         // 7. Numeric equivalence
         ("The value is 42.", "The value equals 42."),
         // 8. Slightly different phrasing
-        ("Use a hash map for lookup.", "Use a hash map to look up values."),
+        (
+            "Use a hash map for lookup.",
+            "Use a hash map to look up values.",
+        ),
         // 9. With/without punctuation
         ("Hello world", "Hello, world!"),
         // 10. Abbreviation
         ("The API returns JSON data.", "The API returns JSON."),
         // 11. Different sentence structure, same info
-        ("Sort the array in ascending order.", "Arrange the array from smallest to largest."),
+        (
+            "Sort the array in ascending order.",
+            "Arrange the array from smallest to largest.",
+        ),
         // 12. Technical synonym
-        ("O(n log n) time complexity.", "The time complexity is O(n log n)."),
+        (
+            "O(n log n) time complexity.",
+            "The time complexity is O(n log n).",
+        ),
         // 13. Imperative vs declarative
         ("Add error handling.", "Error handling should be added."),
         // 14. Short vs verbose
         ("Yes.", "Yes, that is correct."),
         // 15. Reworded explanation
-        ("A stack uses LIFO ordering.", "Stacks follow last-in first-out ordering."),
+        (
+            "A stack uses LIFO ordering.",
+            "Stacks follow last-in first-out ordering.",
+        ),
         // 16. Same code in description
         ("Call `foo()` to start.", "To start, call `foo()`."),
         // 17. Same list, different formatting
-        ("Steps: 1) read 2) process 3) write", "Steps: read, process, write"),
+        (
+            "Steps: 1) read 2) process 3) write",
+            "Steps: read, process, write",
+        ),
         // 18. Same numbers
         ("The count is 100.", "There are 100 items."),
         // 19. Technical equivalence
-        ("Use `Vec<T>` for dynamic arrays.", "Dynamic arrays use `Vec<T>`."),
+        (
+            "Use `Vec<T>` for dynamic arrays.",
+            "Dynamic arrays use `Vec<T>`.",
+        ),
         // 20. Whitespace only difference
         ("hello  world", "hello world"),
         // 21. Trailing period
@@ -406,32 +427,65 @@ fn equivalent_nl_pairs() -> Vec<(&'static str, &'static str)> {
         // 23. Filler words
         ("Just use a loop.", "Use a loop."),
         // 24. Bullet vs prose
-        ("- Read file\n- Parse data\n- Output result", "Read file, parse data, output result."),
+        (
+            "- Read file\n- Parse data\n- Output result",
+            "Read file, parse data, output result.",
+        ),
         // 25. Quotation marks
         ("Set x to 'hello'.", "Set x to \"hello\"."),
         // 26-50: More varied pairs
-        ("The time complexity is O(1).", "This runs in constant time."),
-        ("Null pointer exception.", "NullPointerException was thrown."),
+        (
+            "The time complexity is O(1).",
+            "This runs in constant time.",
+        ),
+        (
+            "Null pointer exception.",
+            "NullPointerException was thrown.",
+        ),
         ("The file does not exist.", "File not found."),
         ("Memory was allocated.", "Memory allocation occurred."),
         ("The test passed.", "Test passed successfully."),
-        ("Compilation error on line 5.", "Error at line 5 during compilation."),
-        ("Use TCP for reliable transport.", "TCP provides reliable transport."),
-        ("The database query returned 0 rows.", "No rows returned from the query."),
+        (
+            "Compilation error on line 5.",
+            "Error at line 5 during compilation.",
+        ),
+        (
+            "Use TCP for reliable transport.",
+            "TCP provides reliable transport.",
+        ),
+        (
+            "The database query returned 0 rows.",
+            "No rows returned from the query.",
+        ),
         ("The function is pure.", "This is a pure function."),
-        ("Binary search has O(log n) complexity.", "The complexity of binary search is O(log n)."),
-        ("The server responded with 200 OK.", "Server returned HTTP 200."),
-        ("Use a mutex for thread safety.", "A mutex ensures thread safety."),
+        (
+            "Binary search has O(log n) complexity.",
+            "The complexity of binary search is O(log n).",
+        ),
+        (
+            "The server responded with 200 OK.",
+            "Server returned HTTP 200.",
+        ),
+        (
+            "Use a mutex for thread safety.",
+            "A mutex ensures thread safety.",
+        ),
         ("The process exited with code 0.", "Exit code: 0."),
         ("No errors found.", "Zero errors detected."),
         ("The branch was merged.", "Branch merge completed."),
-        ("Data is stored in UTF-8.", "UTF-8 encoding is used for data storage."),
+        (
+            "Data is stored in UTF-8.",
+            "UTF-8 encoding is used for data storage.",
+        ),
         ("The request timed out.", "Timeout occurred on the request."),
         ("The list is sorted.", "Sorting of the list is complete."),
         ("Authentication failed.", "Login was unsuccessful."),
         ("Connection refused.", "The connection was refused."),
         ("Disk space is low.", "Low disk space warning."),
-        ("The cache was invalidated.", "Cache invalidation performed."),
+        (
+            "The cache was invalidated.",
+            "Cache invalidation performed.",
+        ),
         ("Rate limit exceeded.", "Too many requests; rate limited."),
         ("The value is null.", "Null value returned."),
         ("Index out of bounds.", "Array index out of range."),
@@ -597,7 +651,10 @@ mod code_matcher_tests {
             ("// just a comment", CodeLanguage::Python),
             ("let x = vec![1, 2, 3];", CodeLanguage::Rust),
             ("class Foo:\n    pass", CodeLanguage::Python),
-            ("async function f() { await g(); }", CodeLanguage::JavaScript),
+            (
+                "async function f() { await g(); }",
+                CodeLanguage::JavaScript,
+            ),
         ];
 
         for (code, lang) in &snippets {
@@ -618,7 +675,11 @@ mod code_matcher_tests {
             ("x = 1", "y = 1", CodeLanguage::Python),
             ("const x = 1;", "const y = 1;", CodeLanguage::JavaScript),
             ("fn foo() {}", "fn bar() {}", CodeLanguage::Rust),
-            ("def f():\n    pass", "def g():\n    pass", CodeLanguage::Python),
+            (
+                "def f():\n    pass",
+                "def g():\n    pass",
+                CodeLanguage::Python,
+            ),
         ];
 
         for (a, b, lang) in &pairs {
@@ -802,7 +863,10 @@ mod embedding_matcher_tests {
             ("hello world", "zyxwvutsrqp"),
             ("abcdef", "123456789"),
             ("The function returns true", "zzzzzzzzzzzzzzzzzzzzz"),
-            ("short", "a completely unrelated very long string with different characters"),
+            (
+                "short",
+                "a completely unrelated very long string with different characters",
+            ),
         ];
 
         for (a, b) in &different_pairs {
@@ -880,10 +944,7 @@ mod embedding_matcher_tests {
     #[test]
     fn test_embedding_very_different_strings_low_score() {
         let matcher = make_matcher(0.92);
-        let score = matcher.similarity_score(
-            "abcdefg",
-            "zyxwvutsrqponmlkjihg",
-        );
+        let score = matcher.similarity_score("abcdefg", "zyxwvutsrqponmlkjihg");
         assert!(
             score < 0.5,
             "Very different strings should have low score, got {}",
@@ -950,8 +1011,14 @@ mod exact_matcher_tests {
     fn test_exact_matcher_reflexivity_property() {
         let matcher = ExactMatcher::new();
         let samples: Vec<&str> = vec![
-            "hello", "", "  ", "42", "special!@#$", "café",
-            "multi\nline\ntext", "tabs\there",
+            "hello",
+            "",
+            "  ",
+            "42",
+            "special!@#$",
+            "café",
+            "multi\nline\ntext",
+            "tabs\there",
         ];
 
         for s in &samples {
@@ -971,10 +1038,7 @@ mod exact_matcher_tests {
         ];
 
         for (a, b) in &pairs {
-            assert_eq!(
-                matcher.are_equivalent(a, b),
-                matcher.are_equivalent(b, a),
-            );
+            assert_eq!(matcher.are_equivalent(a, b), matcher.are_equivalent(b, a),);
             assert_eq!(
                 matcher.similarity_score(a, b),
                 matcher.similarity_score(b, a),
@@ -994,9 +1058,8 @@ mod cross_matcher_tests {
     #[test]
     fn test_all_matchers_agree_on_identical_strings() {
         let exact = ExactMatcher::new();
-        let embedding = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let embedding =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
 
         let strings = vec!["hello world", "42", "fn foo() {}", ""];
         for s in &strings {
@@ -1009,9 +1072,9 @@ mod cross_matcher_tests {
     fn test_matchers_as_trait_objects() {
         let matchers: Vec<Arc<dyn CandidateMatcher>> = vec![
             Arc::new(ExactMatcher::new()),
-            Arc::new(EmbeddingMatcher::with_default_threshold(
-                Box::new(MockEmbeddingClient::default()),
-            )),
+            Arc::new(EmbeddingMatcher::with_default_threshold(Box::new(
+                MockEmbeddingClient::default(),
+            ))),
         ];
 
         for matcher in &matchers {
@@ -1025,9 +1088,8 @@ mod cross_matcher_tests {
         let exact = ExactMatcher::new();
         assert_eq!(exact.matcher_type(), "exact");
 
-        let embedding = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let embedding =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
         assert_eq!(embedding.matcher_type(), "embedding");
     }
 
@@ -1043,9 +1105,9 @@ mod cross_matcher_tests {
     fn test_all_three_matchers_as_trait_objects() {
         let matchers: Vec<Arc<dyn CandidateMatcher>> = vec![
             Arc::new(ExactMatcher::new()),
-            Arc::new(EmbeddingMatcher::with_default_threshold(
-                Box::new(MockEmbeddingClient::default()),
-            )),
+            Arc::new(EmbeddingMatcher::with_default_threshold(Box::new(
+                MockEmbeddingClient::default(),
+            ))),
             Arc::new(CodeMatcher::new(CodeLanguage::Rust, 0.80)),
         ];
 

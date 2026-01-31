@@ -287,7 +287,11 @@ mod tests {
         let client = MockEmbeddingClient::new(64);
         let vec = client.embed("test text").unwrap();
         let mag: f64 = vec.iter().map(|x| x * x).sum::<f64>().sqrt();
-        assert!((mag - 1.0).abs() < 1e-10, "Expected unit vector, mag={}", mag);
+        assert!(
+            (mag - 1.0).abs() < 1e-10,
+            "Expected unit vector, mag={}",
+            mag
+        );
     }
 
     #[test]
@@ -304,14 +308,20 @@ mod tests {
         let a = client.embed("hello world").unwrap();
         let b = client.embed("hello world!").unwrap();
         let sim = cosine_similarity(&a, &b);
-        assert!(sim > 0.8, "Similar text should have high similarity: {}", sim);
+        assert!(
+            sim > 0.8,
+            "Similar text should have high similarity: {}",
+            sim
+        );
     }
 
     #[test]
     fn test_mock_client_different_text_lower_similarity() {
         let client = MockEmbeddingClient::new(128);
         let a = client.embed("hello world").unwrap();
-        let b = client.embed("completely different topic about quantum physics").unwrap();
+        let b = client
+            .embed("completely different topic about quantum physics")
+            .unwrap();
         let similar = client.embed("hello world!").unwrap();
 
         let sim_different = cosine_similarity(&a, &b);
@@ -331,36 +341,30 @@ mod tests {
 
     #[test]
     fn test_matcher_type() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
         assert_eq!(matcher.matcher_type(), "embedding");
     }
 
     #[test]
     fn test_matcher_identical_strings() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
         assert!(matcher.are_equivalent("hello", "hello"));
         assert_eq!(matcher.similarity_score("hello", "hello"), 1.0);
     }
 
     #[test]
     fn test_matcher_whitespace_equivalent() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
         // After canonicalization, these are identical
         assert!(matcher.are_equivalent("hello  world", "hello world"));
     }
 
     #[test]
     fn test_matcher_threshold() {
-        let matcher = EmbeddingMatcher::new(
-            Box::new(MockEmbeddingClient::default()),
-            0.99,
-        );
+        let matcher = EmbeddingMatcher::new(Box::new(MockEmbeddingClient::default()), 0.99);
         assert_eq!(matcher.threshold(), 0.99);
 
         // With very high threshold, slightly different text may not be equivalent
@@ -388,9 +392,8 @@ mod tests {
 
     #[test]
     fn test_matcher_caching() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
 
         assert_eq!(matcher.cache_size(), 0);
 
@@ -405,9 +408,8 @@ mod tests {
 
     #[test]
     fn test_matcher_cache_hit_on_repeated_text() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
 
         // Embed "hello" twice via different comparison pairs
         let s1 = matcher.similarity_score("hello", "world");
@@ -424,9 +426,8 @@ mod tests {
 
     #[test]
     fn test_matcher_reflexivity() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
         let samples = vec!["hello", "world", "test string", ""];
         for s in samples {
             assert!(
@@ -439,14 +440,9 @@ mod tests {
 
     #[test]
     fn test_matcher_symmetry() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
-        let pairs = vec![
-            ("hello", "world"),
-            ("foo bar", "foo baz"),
-            ("same", "same"),
-        ];
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
+        let pairs = vec![("hello", "world"), ("foo bar", "foo baz"), ("same", "same")];
         for (a, b) in pairs {
             assert_eq!(
                 matcher.similarity_score(a, b),
@@ -460,17 +456,15 @@ mod tests {
 
     #[test]
     fn test_matcher_canonicalize() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
         assert_eq!(matcher.canonicalize("  hello   world  "), "hello world");
     }
 
     #[test]
     fn test_matcher_debug() {
-        let matcher = EmbeddingMatcher::with_default_threshold(
-            Box::new(MockEmbeddingClient::default()),
-        );
+        let matcher =
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default()));
         let debug = format!("{:?}", matcher);
         assert!(debug.contains("EmbeddingMatcher"));
         assert!(debug.contains("threshold"));
@@ -483,9 +477,7 @@ mod tests {
     #[test]
     fn test_as_candidate_matcher_trait_object() {
         let matcher: Box<dyn CandidateMatcher> = Box::new(
-            EmbeddingMatcher::with_default_threshold(
-                Box::new(MockEmbeddingClient::default()),
-            ),
+            EmbeddingMatcher::with_default_threshold(Box::new(MockEmbeddingClient::default())),
         );
         assert_eq!(matcher.matcher_type(), "embedding");
         assert!(matcher.are_equivalent("test", "test"));

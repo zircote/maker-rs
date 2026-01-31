@@ -82,10 +82,7 @@ impl Default for ExactMatcher {
 
 impl CandidateMatcher for ExactMatcher {
     fn canonicalize(&self, response: &str) -> String {
-        response
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ")
+        response.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
     fn matcher_type(&self) -> &str {
@@ -213,22 +210,14 @@ mod tests {
         let m = ExactMatcher::new();
         let samples = vec!["hello", "", "  spaces  ", "line\nbreak", "café"];
         for s in samples {
-            assert!(
-                m.are_equivalent(s, s),
-                "Reflexivity violated for {:?}",
-                s
-            );
+            assert!(m.are_equivalent(s, s), "Reflexivity violated for {:?}", s);
         }
     }
 
     #[test]
     fn test_symmetry() {
         let m = ExactMatcher::new();
-        let pairs = vec![
-            ("hello", "hello"),
-            ("hello", "world"),
-            ("a  b", "a b"),
-        ];
+        let pairs = vec![("hello", "hello"), ("hello", "world"), ("a  b", "a b")];
         for (a, b) in pairs {
             assert_eq!(
                 m.are_equivalent(a, b),

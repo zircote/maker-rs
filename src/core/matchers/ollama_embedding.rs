@@ -132,8 +132,9 @@ impl EmbeddingClient for OllamaEmbeddingClient {
             ));
         }
 
-        let embedding_response: OllamaEmbeddingResponse =
-            response.json().map_err(|e| format!("Failed to parse Ollama embedding response: {}", e))?;
+        let embedding_response: OllamaEmbeddingResponse = response
+            .json()
+            .map_err(|e| format!("Failed to parse Ollama embedding response: {}", e))?;
 
         Ok(embedding_response.embedding)
     }

@@ -119,6 +119,7 @@ fn test_vote_request_validation_k_margin_zero() {
         provider: None,
         adaptive: None,
         matcher: None,
+        ensemble: None,
     };
 
     assert!(request.validate().is_err());
@@ -134,6 +135,7 @@ fn test_vote_request_validation_empty_prompt() {
         provider: None,
         adaptive: None,
         matcher: None,
+        ensemble: None,
     };
 
     assert!(request.validate().is_err());
@@ -149,6 +151,7 @@ fn test_vote_request_validation_prompt_too_long() {
         provider: None,
         adaptive: None,
         matcher: None,
+        ensemble: None,
     };
 
     assert!(request.validate().is_err());
@@ -172,6 +175,7 @@ fn test_vote_response_schema() {
         p_hat: None,
         matcher_type: "exact".to_string(),
         candidate_groups: 2,
+        ensemble_metrics: None,
     };
 
     let json = serde_json::to_string(&response).unwrap();
@@ -377,6 +381,7 @@ fn test_configure_response_schema() {
             provider: "openai".to_string(),
             adaptive_k: false,
             matcher: maker::mcp::tools::configure::MatcherConfig::default(),
+            ensemble: None,
         },
     };
 
@@ -460,6 +465,7 @@ fn test_vote_tool_execution_with_mock() {
         provider: None,
         adaptive: None,
         matcher: None,
+        ensemble: None,
     };
 
     let result = execute_vote(&request, 100, 0.1, Some(700));

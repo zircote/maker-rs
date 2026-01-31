@@ -129,6 +129,20 @@ impl LoggingObserver {
                 );
             }
 
+            MakerEvent::EscalationTriggered {
+                from_model,
+                to_model,
+                reason,
+                ..
+            } => {
+                info!(
+                    from = %from_model,
+                    to = %to_model,
+                    reason = %reason,
+                    "Ensemble escalation triggered"
+                );
+            }
+
             MakerEvent::StepCompleted {
                 step_id,
                 state_hash,

@@ -278,6 +278,10 @@ impl MetricsObserver {
                 // Tracked via VoteCast
             }
 
+            MakerEvent::EscalationTriggered { .. } => {
+                // Escalation events are informational; tracked via EnsembleMetrics
+            }
+
             MakerEvent::StepCompleted {
                 cumulative_cost, ..
             } => {

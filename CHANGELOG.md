@@ -6,7 +6,39 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-01-31
+
 ### Added
+
+#### Multi-Model Ensemble (`src/llm/ensemble.rs`, `src/llm/sampler.rs`)
+- **`EnsembleConfig`**: Configuration for 2-5 model voting ensembles with pluggable strategies
+- **`ModelSlot`**: Per-model wrapper holding `Arc<dyn LlmClient>`, sampling weight, and `CostTier`
+- **`EnsembleStrategy` enum**: `RoundRobin` (even distribution), `CostAware` (cheap→medium→expensive phases), `ReliabilityWeighted` (Bresenham-style deficit tracking for proportional allocation)
+- **`CostTier` enum**: `Cheap`, `Medium`, `Expensive` for cost-aware routing phases
+- **`EnsembleMetrics`**: Tracks `models_used`, `samples_per_model`, `escalations`, `cost_per_model`
+- **`TaggedSample`**: Sample result tagged with source model name for attribution
+- **`EnsembleSampleResult`**: Collection of tagged samples with `by_model()` grouping
+- **`collect_ensemble_samples()`**: Async ensemble-aware sampling using `EnsembleConfig` for model selection
+- **`EnsembleConfigRequest`** / **`ModelSlotRequest`**: Serde/JsonSchema request types for MCP configuration
+- **`EscalationTriggered` event**: New `MakerEvent` variant emitted on cost-tier escalation during CostAware routing
+
+#### Ensemble MCP Extension
+- **`ConfigRequest.ensemble`**: Configure ensemble via `maker/configure` tool
+- **`VoteRequest.ensemble`**: Per-call ensemble enable/disable override
+- **`VoteResponse.ensemble_metrics`**: Per-model sample counts, cost breakdown, and escalation count in vote results
+- **`Config.ensemble`**: Ensemble configuration exposed in current config response
+
+#### Domain Benchmarks
+- **`benches/ensemble_comparison.rs`**: Monte Carlo comparison of single-model vs. round-robin vs. cost-aware ensemble (1,000 trials at s=100, s=1,000)
+- **`benches/coding_tasks.rs`**: 10 coding task benchmarks across trivial, moderate, and complex difficulty (FizzBuzz to regex engine)
+- **`benches/math_logic.rs`**: 10 math/logic benchmarks including arithmetic chains, symbolic differentiation, logic puzzles, and Hanoi variants
+- **`benches/data_analysis.rs`**: 10 data analysis benchmarks covering CSV processing, statistics, SQL generation, and data cleaning
+- **`BENCHMARKS.md`**: Aggregated benchmark results with acceptance criteria summary
+- Weekly CI benchmark workflow (`.github/workflows/benchmarks.yml`)
+
+#### Examples
+- **`examples/coding_task.rs`**: Semantic matching on a multi-step coding task
+- **`examples/ensemble_demo.rs`**: Multi-model ensemble voting cost comparison
 
 #### Adaptive K-Margin (`src/core/adaptive.rs`)
 - **`KEstimator`**: EMA-based p-hat estimation (α=0.1) with live `recommended_k()` using observed success rate
@@ -27,15 +59,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`VoteResponse.matcher_type`** and **`candidate_groups`**: New response fields showing matcher used and number of distinct candidate groups
 
 #### Testing
+- 31 unit tests for ensemble configuration (strategy selection, validation, metrics)
+- 7 ensemble sampler tests (tagged samples, multi-model, iterators)
 - 21 property-based tests for adaptive k behavior (bounds, convergence, recovery)
 - 25 semantic matching tests covering code corpus accuracy (>95%), NL pairs, false positive rate, reflexivity, and symmetry
-- Total test count: 501 (with `code-matcher` feature), 485 (without)
+- Total test count: 456 unit + 35 integration (without `code-matcher` feature)
 
 ### Changed
+- `VoteResult` extended with `cost_by_model` and `ensemble_metrics` fields for per-model cost tracking
+- `ServerConfig` extended with `ensemble` field (`Option<EnsembleConfigRequest>`)
 - `VoteRace` now accepts `Arc<dyn CandidateMatcher>` for pluggable candidate grouping
 - `vote_with_margin()` uses matcher for candidate grouping instead of raw string equality
 - `reqwest` dependency now includes `blocking` feature for synchronous embedding HTTP clients
 - `ServerConfig` extended with `adaptive_k`, `ema_alpha`, `k_bounds`, and `matcher` fields
+- `LoggingObserver` and `MetricsObserver` handle `EscalationTriggered` events
 
 ### Fixed
 - N/A
@@ -99,7 +136,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Known Limitations
 - Parallel sampling via async LLM clients not yet integrated into the synchronous voting executor
-- ~~Semantic matching for non-deterministic tasks (e.g., coding) not yet implemented~~ *(resolved in [Unreleased])*
+- ~~Semantic matching for non-deterministic tasks (e.g., coding) not yet implemented~~ *(resolved in [0.2.0])*
+- ~~Multi-model ensemble voting not yet implemented~~ *(resolved in [0.2.0])*
 - MCP tool names use `/` separator (e.g., `maker/vote`) which triggers rmcp naming warnings
 
 ## [0.0.0] - 2026-01-30
@@ -112,6 +150,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-[Unreleased]: https://github.com/zircote/maker-rs/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/zircote/maker-rs/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/zircote/maker-rs/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/zircote/maker-rs/compare/v0.0.0...v0.1.0
 [0.0.0]: https://github.com/zircote/maker-rs/releases/tag/v0.0.0

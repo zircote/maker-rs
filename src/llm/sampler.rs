@@ -193,6 +193,160 @@ pub async fn collect_samples(
     }
 }
 
+/// A single sample result tagged with its source model
+#[derive(Debug, Clone)]
+pub struct TaggedSample {
+    /// The LLM response (or error)
+    pub result: Result<LlmResponse, LlmError>,
+    /// Name of the model that produced this sample
+    pub model_name: String,
+}
+
+/// Result of collecting ensemble samples
+#[derive(Debug)]
+pub struct EnsembleSampleResult {
+    /// All collected samples with model attribution
+    pub samples: Vec<TaggedSample>,
+    /// Total time to collect all samples
+    pub total_duration: Duration,
+    /// Number of successful samples
+    pub success_count: usize,
+    /// Number of failed samples
+    pub failure_count: usize,
+}
+
+impl EnsembleSampleResult {
+    /// Get only successful samples
+    pub fn successes(&self) -> impl Iterator<Item = &TaggedSample> {
+        self.samples.iter().filter(|s| s.result.is_ok())
+    }
+
+    /// Get only failed samples
+    pub fn failures(&self) -> impl Iterator<Item = &TaggedSample> {
+        self.samples.iter().filter(|s| s.result.is_err())
+    }
+
+    /// Get samples grouped by model name
+    pub fn by_model(&self) -> std::collections::HashMap<&str, Vec<&TaggedSample>> {
+        let mut map: std::collections::HashMap<&str, Vec<&TaggedSample>> =
+            std::collections::HashMap::new();
+        for sample in &self.samples {
+            map.entry(&sample.model_name).or_default().push(sample);
+        }
+        map
+    }
+}
+
+/// Collect samples from an ensemble of LLM models in parallel
+///
+/// Each sample is routed to a model according to the ensemble strategy.
+/// Samples are tagged with their source model for cost tracking and
+/// attribution.
+///
+/// # Arguments
+/// * `prompt` - The prompt to send to the LLMs
+/// * `num_samples` - Number of samples to collect
+/// * `ensemble` - Ensemble configuration with model selection strategy
+/// * `config` - Sampling configuration (temperature, timeout, concurrency)
+/// * `k_margin` - k-margin hint for cost-aware strategy phase boundaries
+/// * `event_bus` - Optional event bus for emitting events
+pub async fn collect_ensemble_samples(
+    prompt: &str,
+    num_samples: usize,
+    ensemble: &crate::llm::ensemble::EnsembleConfig,
+    config: SampleConfig,
+    k_margin: Option<usize>,
+    event_bus: Option<&EventBus>,
+) -> EnsembleSampleResult {
+    let start = Instant::now();
+    let prompt_hash = format!("{:016x}", hash_prompt(prompt));
+
+    let mut join_set: JoinSet<(usize, String, Result<LlmResponse, LlmError>)> = JoinSet::new();
+
+    for i in 0..num_samples {
+        let model_idx = ensemble.select_model_for_sample(i, k_margin);
+        let client = Arc::clone(ensemble.client_for_index(model_idx));
+        let prompt = prompt.to_string();
+        let temp = config.temperature_for_sample(i);
+        let model_name = client.model_name().to_string();
+        let prompt_hash_clone = prompt_hash.clone();
+
+        if let Some(bus) = event_bus {
+            bus.emit(MakerEvent::sample_requested(
+                &model_name,
+                &prompt_hash_clone,
+                temp,
+            ));
+        }
+
+        join_set.spawn(async move {
+            let result = client.generate(&prompt, temp).await;
+            (i, model_name, result)
+        });
+
+        if join_set.len() >= config.max_concurrent {
+            if let Some(Ok((_, _, _))) = join_set.join_next().await {
+                // Drained to stay under concurrency limit; collected below
+            }
+        }
+    }
+
+    // Collect all results with timeout
+    let mut samples: Vec<Option<TaggedSample>> = (0..num_samples).map(|_| None).collect();
+    let deadline = tokio::time::Instant::now() + config.timeout;
+
+    while let Ok(Some(result)) = tokio::time::timeout_at(deadline, join_set.join_next()).await {
+        if let Ok((idx, model_name, response)) = result {
+            if let Some(bus) = event_bus {
+                match &response {
+                    Ok(resp) => {
+                        bus.emit(MakerEvent::sample_completed(
+                            &model_name,
+                            resp.tokens.total(),
+                            resp.latency.as_millis() as u64,
+                            vec![],
+                        ));
+                    }
+                    Err(_) => {
+                        bus.emit(MakerEvent::sample_completed(&model_name, 0, 0, vec![]));
+                    }
+                }
+            }
+            samples[idx] = Some(TaggedSample {
+                result: response,
+                model_name,
+            });
+        }
+    }
+
+    join_set.abort_all();
+
+    // Fill any missing samples (timed out) with timeout errors
+    let samples: Vec<TaggedSample> = samples
+        .into_iter()
+        .enumerate()
+        .map(|(i, opt)| {
+            opt.unwrap_or_else(|| {
+                let model_idx = ensemble.select_model_for_sample(i, k_margin);
+                TaggedSample {
+                    result: Err(LlmError::Timeout),
+                    model_name: ensemble.model_name_for_index(model_idx).to_string(),
+                }
+            })
+        })
+        .collect();
+
+    let success_count = samples.iter().filter(|s| s.result.is_ok()).count();
+    let failure_count = samples.iter().filter(|s| s.result.is_err()).count();
+
+    EnsembleSampleResult {
+        samples,
+        total_duration: start.elapsed(),
+        success_count,
+        failure_count,
+    }
+}
+
 /// Simple hash function for prompt (for event correlation)
 fn hash_prompt(prompt: &str) -> u64 {
     use std::hash::{Hash, Hasher};
@@ -485,6 +639,254 @@ mod tests {
 
         assert_eq!(result.successes().count(), 1);
         assert_eq!(result.failures().count(), 1);
+    }
+
+    // ==========================================
+    // Ensemble Sampling Tests (STORY-010-02)
+    // ==========================================
+
+    use crate::llm::ensemble::{CostTier, EnsembleConfig, EnsembleStrategy, ModelSlot};
+
+    /// Mock LLM client that identifies itself by name
+    struct NamedMockClient {
+        name: String,
+        delay: Duration,
+    }
+
+    impl NamedMockClient {
+        fn new(name: &str, delay: Duration) -> Arc<dyn LlmClient> {
+            Arc::new(Self {
+                name: name.to_string(),
+                delay,
+            })
+        }
+    }
+
+    impl LlmClient for NamedMockClient {
+        fn generate(
+            &self,
+            _prompt: &str,
+            _temperature: f64,
+        ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, LlmError>> + Send + '_>> {
+            let name = self.name.clone();
+            let delay = self.delay;
+            Box::pin(async move {
+                tokio::time::sleep(delay).await;
+                Ok(LlmResponse {
+                    content: format!("from:{}", name),
+                    tokens: TokenUsage::new(10, 20),
+                    latency: delay,
+                })
+            })
+        }
+
+        fn model_name(&self) -> &str {
+            &self.name
+        }
+
+        fn cost_per_1k_tokens(&self) -> TokenCost {
+            TokenCost::new(0.001, 0.002)
+        }
+    }
+
+    /// Mock LLM client that always fails
+    struct FailingMockClient {
+        name: String,
+    }
+
+    impl LlmClient for FailingMockClient {
+        fn generate(
+            &self,
+            _prompt: &str,
+            _temperature: f64,
+        ) -> Pin<Box<dyn Future<Output = Result<LlmResponse, LlmError>> + Send + '_>> {
+            Box::pin(async { Err(LlmError::NetworkError("model unavailable".to_string())) })
+        }
+
+        fn model_name(&self) -> &str {
+            &self.name
+        }
+
+        fn cost_per_1k_tokens(&self) -> TokenCost {
+            TokenCost::new(0.0, 0.0)
+        }
+    }
+
+    fn make_test_ensemble(strategy: EnsembleStrategy) -> EnsembleConfig {
+        EnsembleConfig::new(
+            vec![
+                ModelSlot::new(
+                    NamedMockClient::new("model-a", Duration::from_millis(5)),
+                    1.0,
+                    CostTier::Cheap,
+                ),
+                ModelSlot::new(
+                    NamedMockClient::new("model-b", Duration::from_millis(5)),
+                    1.0,
+                    CostTier::Expensive,
+                ),
+            ],
+            strategy,
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_ensemble_samples_from_multiple_models() {
+        let ensemble = make_test_ensemble(EnsembleStrategy::RoundRobin);
+        let config = SampleConfig::new(0.1, Duration::from_secs(5), 10);
+
+        let result = collect_ensemble_samples("test", 6, &ensemble, config, None, None).await;
+
+        assert_eq!(result.samples.len(), 6);
+        assert_eq!(result.success_count, 6);
+
+        // Verify model attribution
+        let by_model = result.by_model();
+        assert!(by_model.contains_key("model-a"));
+        assert!(by_model.contains_key("model-b"));
+        assert_eq!(by_model["model-a"].len(), 3);
+        assert_eq!(by_model["model-b"].len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_ensemble_samples_tagged_with_model_name() {
+        let ensemble = make_test_ensemble(EnsembleStrategy::RoundRobin);
+        let config = SampleConfig::new(0.1, Duration::from_secs(5), 10);
+
+        let result = collect_ensemble_samples("test", 4, &ensemble, config, None, None).await;
+
+        for sample in &result.samples {
+            assert!(
+                sample.model_name == "model-a" || sample.model_name == "model-b",
+                "unexpected model name: {}",
+                sample.model_name
+            );
+            // Verify content matches model name
+            if let Ok(resp) = &sample.result {
+                assert!(resp.content.contains(&sample.model_name));
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ensemble_model_failure_doesnt_halt_voting() {
+        let ensemble = EnsembleConfig::new(
+            vec![
+                ModelSlot::new(
+                    NamedMockClient::new("good-model", Duration::from_millis(5)),
+                    1.0,
+                    CostTier::Cheap,
+                ),
+                ModelSlot::new(
+                    Arc::new(FailingMockClient {
+                        name: "bad-model".to_string(),
+                    }),
+                    1.0,
+                    CostTier::Expensive,
+                ),
+            ],
+            EnsembleStrategy::RoundRobin,
+        )
+        .unwrap();
+
+        let config = SampleConfig::new(0.1, Duration::from_secs(5), 10);
+        let result = collect_ensemble_samples("test", 6, &ensemble, config, None, None).await;
+
+        assert_eq!(result.samples.len(), 6);
+        // Good model samples succeed, bad model samples fail
+        assert!(result.success_count > 0, "Some samples should succeed");
+        assert!(result.failure_count > 0, "Some samples should fail");
+        assert_eq!(result.success_count + result.failure_count, 6);
+    }
+
+    #[tokio::test]
+    async fn test_ensemble_parallel_latency() {
+        let ensemble = make_test_ensemble(EnsembleStrategy::RoundRobin);
+        let config = SampleConfig::new(0.1, Duration::from_secs(5), 10);
+
+        let start = Instant::now();
+        let result = collect_ensemble_samples("test", 6, &ensemble, config, None, None).await;
+        let elapsed = start.elapsed();
+
+        assert_eq!(result.success_count, 6);
+        // Parallel: should be ~max(individual) not sum
+        // Each mock takes 5ms, so 6 samples sequentially = 30ms
+        // Parallel should be much less than 30ms (with some overhead)
+        assert!(
+            elapsed < Duration::from_millis(100),
+            "Ensemble sampling too slow: {:?}",
+            elapsed
+        );
+    }
+
+    #[tokio::test]
+    async fn test_ensemble_cost_aware_routes_to_cheap_first() {
+        let ensemble = EnsembleConfig::new(
+            vec![
+                ModelSlot::new(
+                    NamedMockClient::new("cheap", Duration::from_millis(5)),
+                    1.0,
+                    CostTier::Cheap,
+                ),
+                ModelSlot::new(
+                    NamedMockClient::new("expensive", Duration::from_millis(5)),
+                    1.0,
+                    CostTier::Expensive,
+                ),
+            ],
+            EnsembleStrategy::CostAware,
+        )
+        .unwrap();
+
+        let config = SampleConfig::new(0.1, Duration::from_secs(5), 10);
+        let result = collect_ensemble_samples("test", 3, &ensemble, config, Some(3), None).await;
+
+        // With k=3, first 3 samples should all go to cheap model
+        for sample in &result.samples {
+            assert_eq!(
+                sample.model_name, "cheap",
+                "First k samples should use cheap model"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ensemble_result_iterators() {
+        let ensemble = EnsembleConfig::new(
+            vec![
+                ModelSlot::new(
+                    NamedMockClient::new("good", Duration::from_millis(5)),
+                    1.0,
+                    CostTier::Cheap,
+                ),
+                ModelSlot::new(
+                    Arc::new(FailingMockClient {
+                        name: "bad".to_string(),
+                    }),
+                    1.0,
+                    CostTier::Expensive,
+                ),
+            ],
+            EnsembleStrategy::RoundRobin,
+        )
+        .unwrap();
+
+        let config = SampleConfig::new(0.1, Duration::from_secs(5), 10);
+        let result = collect_ensemble_samples("test", 4, &ensemble, config, None, None).await;
+
+        let successes: Vec<_> = result.successes().collect();
+        let failures: Vec<_> = result.failures().collect();
+
+        assert_eq!(successes.len() + failures.len(), 4);
+        // All successes should be from "good" model
+        for s in &successes {
+            assert_eq!(s.model_name, "good");
+        }
+        // All failures should be from "bad" model
+        for f in &failures {
+            assert_eq!(f.model_name, "bad");
+        }
     }
 
     #[test]

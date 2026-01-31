@@ -354,7 +354,7 @@ mod tests {
         }
 
         let p_sample = 0.55 + 0.40 * 1.0; // efficiency=1.0 → p_sample=0.95
-        // After 20 EMA updates from 0.70 toward 0.95, should be within 5%
+                                          // After 20 EMA updates from 0.70 toward 0.95, should be within 5%
         let target = p_sample;
         let tolerance = target * 0.05;
         let diff = (estimator.p_hat() - target).abs();
@@ -494,11 +494,7 @@ mod tests {
             k_used: 3,
             red_flagged: 0,
         });
-        assert!(
-            p > 0.90,
-            "Unanimous vote should give high p, got {:.4}",
-            p
-        );
+        assert!(p > 0.90, "Unanimous vote should give high p, got {:.4}", p);
     }
 
     #[test]
@@ -510,11 +506,7 @@ mod tests {
             k_used: 3,
             red_flagged: 0,
         });
-        assert!(
-            p < 0.85,
-            "Contested vote should give lower p, got {:.4}",
-            p
-        );
+        assert!(p < 0.85, "Contested vote should give lower p, got {:.4}", p);
     }
 
     #[test]
@@ -654,7 +646,10 @@ mod tests {
             });
         }
         assert!(estimator.p_hat() <= 0.99, "p_hat should not exceed 0.99");
-        assert!(estimator.p_hat() >= 0.51, "p_hat should not drop below 0.51");
+        assert!(
+            estimator.p_hat() >= 0.51,
+            "p_hat should not drop below 0.51"
+        );
 
         // Now push down
         for _ in 0..50 {
@@ -665,7 +660,10 @@ mod tests {
                 red_flagged: 40,
             });
         }
-        assert!(estimator.p_hat() >= 0.51, "p_hat should not drop below 0.51");
+        assert!(
+            estimator.p_hat() >= 0.51,
+            "p_hat should not drop below 0.51"
+        );
     }
 
     #[test]

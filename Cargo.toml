@@ -1,6 +1,6 @@
 [package]
 name = "maker"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "MAKER Framework - Zero-error LLM agent execution via SPRT voting"
 license = "MIT"
@@ -33,4 +33,20 @@ path = "src/bin/maker-mcp.rs"
 
 [[bench]]
 name = "cost_scaling"
+harness = false
+
+[[bench]]
+name = "ensemble_comparison"
+harness = false
+
+[[bench]]
+name = "coding_tasks"
+harness = false
+
+[[bench]]
+name = "math_logic"
+harness = false
+
+[[bench]]
+name = "data_analysis"
 harness = false

@@ -2,6 +2,7 @@
 //!
 //! Set default voting parameters for subsequent calls.
 
+use crate::llm::ensemble::EnsembleConfigRequest;
 use crate::mcp::server::ServerConfig;
 use rmcp::schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
@@ -48,8 +49,6 @@ fn default_embedding_provider() -> String {
 fn default_code_threshold() -> f64 {
     0.95
 }
-
-
 
 impl MatcherConfig {
     /// Get a human-readable type name for this matcher configuration.
@@ -134,6 +133,9 @@ pub struct ConfigRequest {
     /// Matcher configuration for candidate response grouping (optional)
     #[serde(default)]
     pub matcher: Option<MatcherConfig>,
+    /// Ensemble configuration for multi-model voting (optional)
+    #[serde(default)]
+    pub ensemble: Option<EnsembleConfigRequest>,
 }
 
 impl ConfigRequest {
@@ -147,6 +149,7 @@ impl ConfigRequest {
             || self.ema_alpha.is_some()
             || self.k_bounds.is_some()
             || self.matcher.is_some()
+            || self.ensemble.is_some()
     }
 }
 
@@ -165,6 +168,9 @@ pub struct Config {
     pub adaptive_k: bool,
     /// Active matcher configuration
     pub matcher: MatcherConfig,
+    /// Ensemble configuration (None = single-model mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ensemble: Option<EnsembleConfigRequest>,
 }
 
 impl From<&ServerConfig> for Config {
@@ -176,6 +182,7 @@ impl From<&ServerConfig> for Config {
             provider: config.provider.clone(),
             adaptive_k: config.adaptive_k,
             matcher: config.matcher.clone(),
+            ensemble: config.ensemble.clone(),
         }
     }
 }
@@ -249,6 +256,13 @@ pub fn apply_config_updates(config: &mut ServerConfig, request: &ConfigRequest) 
         }
     }
 
+    if let Some(ref ensemble) = request.ensemble {
+        if ensemble.validate().is_ok() {
+            config.ensemble = Some(ensemble.clone());
+            applied = true;
+        }
+    }
+
     applied
 }
 
@@ -300,6 +314,7 @@ mod tests {
                 provider: "anthropic".to_string(),
                 adaptive_k: false,
                 matcher: MatcherConfig::default(),
+                ensemble: None,
             },
         };
 

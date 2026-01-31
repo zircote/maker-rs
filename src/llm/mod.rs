@@ -10,6 +10,7 @@
 //! ```
 
 pub mod anthropic;
+pub mod ensemble;
 pub mod ollama;
 pub mod openai;
 pub mod retry;
