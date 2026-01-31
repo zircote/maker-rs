@@ -84,7 +84,7 @@ cargo run --example custom_task
 ```
 src/
 ├── core/               # Core MAKER algorithms
-│   ├── kmin.rs         # k_min = ⌈ln(1-t^(1/s)) / ln((1-p)/p)⌉
+│   ├── kmin.rs         # k_min = ⌈ln(1 - t^(m/s)) / ln((1-p)/p)⌉
 │   ├── voting.rs       # VoteRace: first-to-ahead-by-k (thread-safe)
 │   ├── redflag.rs      # RedFlagValidator: discard-don't-repair
 │   ├── executor.rs     # vote_with_margin(): the main integration point

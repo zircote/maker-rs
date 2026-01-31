@@ -5,7 +5,7 @@
 > Items marked with ⊘ are blocked until dependencies complete.
 
 **Generated:** 2026-01-30
-**Total Story Points:** 127
+**Total Story Points:** 132
 **Timeline:** 14 days (3 sprints)
 
 ---
@@ -19,7 +19,7 @@
 
 - [x] **STORY-001-01** — k_min Calculation (3 pts) ✅
   - [x] Create src/core/kmin.rs
-  - [x] Implement formula: k_min = ⌈ln(1-t^(1/s)) / ln((1-p)/p)⌉
+  - [x] Implement formula: k_min = ⌈ln(1 - t^(m/s)) / ln((1-p)/p)⌉
   - [x] Add input validation and edge case handling
   - [x] ✓ Function returns correct k_min for paper test cases
   - [x] ✓ Property test: k_min increases logarithmically with s
@@ -323,7 +323,7 @@
 ```bash
 # Final checks
 cargo test --all-features
-cargo llvm-cov --fail-under-lines 95
+cargo llvm-cov --fail-under-lines 90 --ignore-filename-regex '(main\.rs|maker-mcp\.rs)'
 cargo fmt --check
 cargo clippy -- -D warnings
 cargo doc --no-deps

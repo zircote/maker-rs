@@ -114,6 +114,6 @@ cargo run --example hanoi -- --disks 10
 
 ---
 
-**Project Status:** Planning Complete - Ready for Implementation
+**Project Status:** v0.1.0 Released
 **Start Date:** 2026-01-30
 **Target Release:** v0.1.0 MVP by Day 14
