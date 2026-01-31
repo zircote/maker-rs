@@ -18,4 +18,4 @@ pub use ollama_embedding::OllamaEmbeddingClient;
 pub use openai_embedding::OpenAiEmbeddingClient;
 
 #[cfg(feature = "code-matcher")]
-pub use code::CodeMatcher;
+pub use code::{CodeLanguage, CodeMatcher};

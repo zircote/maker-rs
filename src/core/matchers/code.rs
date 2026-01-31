@@ -31,7 +31,7 @@ pub enum CodeLanguage {
 
 impl CodeLanguage {
     /// Get the tree-sitter Language for this code language.
-    fn tree_sitter_language(&self) -> Language {
+    pub fn tree_sitter_language(&self) -> Language {
         match self {
             CodeLanguage::Rust => tree_sitter_rust::LANGUAGE.into(),
             CodeLanguage::Python => tree_sitter_python::LANGUAGE.into(),

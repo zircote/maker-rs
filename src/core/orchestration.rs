@@ -353,6 +353,161 @@ impl Default for MicroagentConfig {
     }
 }
 
+// ==========================================
+// Decomposition Tree Adapter (v0.3.0)
+// ==========================================
+
+use crate::core::decomposition::{DecompositionProposal, DecompositionSubtask};
+
+/// Adapter that wraps a `DecompositionProposal` to implement `TaskDecomposer`
+///
+/// This bridges the v0.3.0 decomposition framework with the existing
+/// `TaskOrchestrator`, allowing decomposition trees to be executed
+/// using the orchestration infrastructure.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use maker::core::{DecompositionProposal, DecompositionSubtask, CompositionFunction};
+/// use maker::core::orchestration::{ProposalDecomposer, TaskOrchestrator};
+///
+/// let proposal = DecompositionProposal::new(
+///     "proposal-1",
+///     "task-1",
+///     vec![
+///         DecompositionSubtask::leaf("step-1", "Do first thing"),
+///         DecompositionSubtask::leaf("step-2", "Do second thing"),
+///     ],
+///     CompositionFunction::Sequential,
+/// );
+///
+/// let decomposer = ProposalDecomposer::new(proposal);
+/// let orchestrator = TaskOrchestrator::new(decomposer);
+/// ```
+#[derive(Debug, Clone)]
+pub struct ProposalDecomposer {
+    /// The decomposition proposal to execute
+    proposal: DecompositionProposal,
+    /// Cached subtasks converted to orchestration format
+    subtasks: Vec<Subtask>,
+    /// Initial state from the proposal context
+    initial_state: State,
+}
+
+impl ProposalDecomposer {
+    /// Create a new decomposer from a decomposition proposal
+    ///
+    /// Converts the proposal's leaf subtasks into orchestration `Subtask` format,
+    /// sorted by their `order` field.
+    pub fn new(proposal: DecompositionProposal) -> Self {
+        Self::with_initial_state(proposal, State::new(serde_json::Value::Null))
+    }
+
+    /// Create a new decomposer with a specific initial state
+    pub fn with_initial_state(proposal: DecompositionProposal, initial_state: State) -> Self {
+        // Extract and sort leaf nodes by order
+        let mut leaves: Vec<_> = proposal.leaves().into_iter().cloned().collect();
+        leaves.sort_by_key(|s| s.order);
+
+        // Convert DecompositionSubtask to Subtask
+        let subtasks = leaves
+            .into_iter()
+            .enumerate()
+            .map(|(idx, ds)| Self::convert_subtask(idx, &ds))
+            .collect();
+
+        Self {
+            proposal,
+            subtasks,
+            initial_state,
+        }
+    }
+
+    /// Convert a DecompositionSubtask to the orchestration Subtask format
+    fn convert_subtask(step_id: usize, ds: &DecompositionSubtask) -> Subtask {
+        // Build a state that includes the subtask's context
+        let state_data = if ds.context.is_null() {
+            serde_json::json!({
+                "task_id": ds.task_id,
+                "description": ds.description
+            })
+        } else {
+            serde_json::json!({
+                "task_id": ds.task_id,
+                "description": ds.description,
+                "context": ds.context
+            })
+        };
+
+        Subtask {
+            step_id,
+            prompt: ds.description.clone(),
+            state: State::new(state_data),
+        }
+    }
+
+    /// Get the underlying proposal
+    pub fn proposal(&self) -> &DecompositionProposal {
+        &self.proposal
+    }
+
+    /// Get the proposal ID
+    pub fn proposal_id(&self) -> &str {
+        &self.proposal.proposal_id
+    }
+
+    /// Get the source task ID
+    pub fn source_task_id(&self) -> &str {
+        &self.proposal.source_task_id
+    }
+}
+
+impl TaskDecomposer for ProposalDecomposer {
+    fn decompose(&self) -> Vec<Subtask> {
+        self.subtasks.clone()
+    }
+
+    fn total_steps(&self) -> usize {
+        self.subtasks.len()
+    }
+
+    fn initial_state(&self) -> State {
+        self.initial_state.clone()
+    }
+
+    fn validate_output(&self, _step_id: usize, _output: &AgentOutput) -> Result<(), String> {
+        // Default: no validation beyond state hash (handled by orchestrator)
+        Ok(())
+    }
+}
+
+/// Extension trait for TaskOrchestrator to work with decomposition proposals
+pub trait OrchestratorExt {
+    /// Create an orchestrator from a decomposition proposal
+    fn from_proposal(proposal: DecompositionProposal) -> TaskOrchestrator<ProposalDecomposer>;
+
+    /// Create an orchestrator from a proposal with initial state
+    fn from_proposal_with_state(
+        proposal: DecompositionProposal,
+        initial_state: State,
+    ) -> TaskOrchestrator<ProposalDecomposer>;
+}
+
+impl OrchestratorExt for TaskOrchestrator<ProposalDecomposer> {
+    fn from_proposal(proposal: DecompositionProposal) -> TaskOrchestrator<ProposalDecomposer> {
+        let decomposer = ProposalDecomposer::new(proposal);
+        TaskOrchestrator::new(decomposer)
+    }
+
+    fn from_proposal_with_state(
+        proposal: DecompositionProposal,
+        initial_state: State,
+    ) -> TaskOrchestrator<ProposalDecomposer> {
+        let decomposer = ProposalDecomposer::with_initial_state(proposal, initial_state);
+        TaskOrchestrator::new(decomposer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -720,5 +875,191 @@ mod tests {
         let subtask1 = orchestrator.current_subtask().unwrap();
         // Subtask only has current state, not outputs list
         assert!(subtask1.state.hash.is_some());
+    }
+
+    // ==========================================
+    // ProposalDecomposer Adapter Tests (v0.3.0)
+    // ==========================================
+
+    use crate::core::decomposition::{CompositionFunction, DecompositionProposal};
+
+    #[test]
+    fn test_proposal_decomposer_basic() {
+        let proposal = DecompositionProposal::new(
+            "proposal-1",
+            "task-1",
+            vec![
+                DecompositionSubtask::leaf("step-1", "First step").with_order(0),
+                DecompositionSubtask::leaf("step-2", "Second step").with_order(1),
+            ],
+            CompositionFunction::Sequential,
+        );
+
+        let decomposer = ProposalDecomposer::new(proposal);
+
+        assert_eq!(decomposer.total_steps(), 2);
+        assert_eq!(decomposer.proposal_id(), "proposal-1");
+        assert_eq!(decomposer.source_task_id(), "task-1");
+    }
+
+    #[test]
+    fn test_proposal_decomposer_preserves_order() {
+        let proposal = DecompositionProposal::new(
+            "p-1",
+            "src",
+            vec![
+                DecompositionSubtask::leaf("step-c", "Third").with_order(2),
+                DecompositionSubtask::leaf("step-a", "First").with_order(0),
+                DecompositionSubtask::leaf("step-b", "Second").with_order(1),
+            ],
+            CompositionFunction::Sequential,
+        );
+
+        let decomposer = ProposalDecomposer::new(proposal);
+        let subtasks = decomposer.decompose();
+
+        assert_eq!(subtasks.len(), 3);
+        assert_eq!(subtasks[0].prompt, "First");
+        assert_eq!(subtasks[1].prompt, "Second");
+        assert_eq!(subtasks[2].prompt, "Third");
+    }
+
+    #[test]
+    fn test_proposal_decomposer_with_orchestrator() {
+        let proposal = DecompositionProposal::new(
+            "proposal-1",
+            "task-1",
+            vec![
+                DecompositionSubtask::leaf("step-1", "Do first thing").with_order(0),
+                DecompositionSubtask::leaf("step-2", "Do second thing").with_order(1),
+            ],
+            CompositionFunction::Sequential,
+        );
+
+        let decomposer = ProposalDecomposer::new(proposal);
+        let mut orchestrator = TaskOrchestrator::new(decomposer);
+
+        assert_eq!(orchestrator.total_steps(), 2);
+        assert!(!orchestrator.is_complete());
+
+        // Get first subtask
+        let subtask = orchestrator.current_subtask().unwrap();
+        assert_eq!(subtask.prompt, "Do first thing");
+        assert_eq!(subtask.step_id, 0);
+
+        // Process output and advance
+        let output = AgentOutput::new("done".to_string(), State::new(json!({"step": 1})));
+        orchestrator.process_output(output).unwrap();
+
+        assert_eq!(orchestrator.current_step_index(), 1);
+
+        // Get second subtask
+        let subtask = orchestrator.current_subtask().unwrap();
+        assert_eq!(subtask.prompt, "Do second thing");
+    }
+
+    #[test]
+    fn test_proposal_decomposer_from_proposal_ext() {
+        use super::OrchestratorExt;
+
+        let proposal = DecompositionProposal::new(
+            "p-1",
+            "src",
+            vec![DecompositionSubtask::leaf("s-1", "Single step")],
+            CompositionFunction::Sequential,
+        );
+
+        let orchestrator = TaskOrchestrator::from_proposal(proposal);
+
+        assert_eq!(orchestrator.total_steps(), 1);
+        assert!(!orchestrator.is_complete());
+    }
+
+    #[test]
+    fn test_proposal_decomposer_with_initial_state() {
+        use super::OrchestratorExt;
+
+        let proposal = DecompositionProposal::new(
+            "p-1",
+            "src",
+            vec![DecompositionSubtask::leaf("s-1", "Step")],
+            CompositionFunction::Sequential,
+        );
+
+        let initial_state = State::new(json!({"initial": true, "value": 42}));
+        let orchestrator = TaskOrchestrator::from_proposal_with_state(proposal, initial_state);
+
+        assert_eq!(orchestrator.current_state().data["initial"], true);
+        assert_eq!(orchestrator.current_state().data["value"], 42);
+    }
+
+    #[test]
+    fn test_proposal_decomposer_only_uses_leaves() {
+        let proposal = DecompositionProposal::new(
+            "p-1",
+            "src",
+            vec![
+                DecompositionSubtask::leaf("leaf-1", "First leaf").with_order(0),
+                DecompositionSubtask::new("non-leaf", "Not a leaf"), // Should be skipped
+                DecompositionSubtask::leaf("leaf-2", "Second leaf").with_order(1),
+            ],
+            CompositionFunction::Sequential,
+        );
+
+        let decomposer = ProposalDecomposer::new(proposal);
+
+        // Only leaf nodes should be included
+        assert_eq!(decomposer.total_steps(), 2);
+        let subtasks = decomposer.decompose();
+        assert_eq!(subtasks[0].prompt, "First leaf");
+        assert_eq!(subtasks[1].prompt, "Second leaf");
+    }
+
+    #[test]
+    fn test_proposal_decomposer_with_context() {
+        let proposal = DecompositionProposal::new(
+            "p-1",
+            "src",
+            vec![DecompositionSubtask::leaf("s-1", "Step with context")
+                .with_context(json!({"hint": "use this", "value": 123}))],
+            CompositionFunction::Sequential,
+        );
+
+        let decomposer = ProposalDecomposer::new(proposal);
+        let subtasks = decomposer.decompose();
+
+        // Context should be included in the state
+        assert!(subtasks[0].state.data.get("context").is_some());
+        assert_eq!(subtasks[0].state.data["context"]["hint"], "use this");
+    }
+
+    #[test]
+    fn test_proposal_decomposer_full_execution() {
+        use super::OrchestratorExt;
+
+        let proposal = DecompositionProposal::new(
+            "p-1",
+            "src",
+            vec![
+                DecompositionSubtask::leaf("s-1", "Step 1").with_order(0),
+                DecompositionSubtask::leaf("s-2", "Step 2").with_order(1),
+                DecompositionSubtask::leaf("s-3", "Step 3").with_order(2),
+            ],
+            CompositionFunction::Sequential,
+        );
+
+        let mut orchestrator = TaskOrchestrator::from_proposal(proposal);
+
+        // Execute all steps
+        for i in 0..3 {
+            assert!(!orchestrator.is_complete());
+            let output =
+                AgentOutput::new(format!("action-{}", i), State::new(json!({"step": i + 1})));
+            orchestrator.process_output(output).unwrap();
+        }
+
+        assert!(orchestrator.is_complete());
+        assert_eq!(orchestrator.outputs().len(), 3);
+        assert!(orchestrator.current_subtask().is_none());
     }
 }
