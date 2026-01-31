@@ -132,15 +132,32 @@ pub enum VoteToolError {
     /// Prompt cannot be empty
     EmptyPrompt,
     /// Prompt exceeds maximum length
-    PromptTooLong { length: usize, max: usize },
+    PromptTooLong {
+        /// Actual prompt length
+        length: usize,
+        /// Maximum allowed length
+        max: usize,
+    },
     /// Voting failed to converge
-    NoConvergence { samples: usize },
+    NoConvergence {
+        /// Number of samples collected
+        samples: usize,
+    },
     /// Voting timed out
-    Timeout { elapsed_ms: u64 },
+    Timeout {
+        /// Elapsed time in milliseconds
+        elapsed_ms: u64,
+    },
     /// All samples were red-flagged
-    AllRedFlagged { samples: usize },
+    AllRedFlagged {
+        /// Total samples that were all discarded
+        samples: usize,
+    },
     /// LLM provider error
-    ProviderError { message: String },
+    ProviderError {
+        /// Error message from the provider
+        message: String,
+    },
 }
 
 impl std::fmt::Display for VoteToolError {

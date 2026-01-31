@@ -28,13 +28,25 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum KminError {
     /// p must be in (0.5, 1.0) - voting requires better than random chance
-    InvalidSuccessProbability { p: f64 },
+    InvalidSuccessProbability {
+        /// The invalid probability value
+        p: f64,
+    },
     /// t must be in (0, 1) - target reliability as a probability
-    InvalidTargetReliability { t: f64 },
+    InvalidTargetReliability {
+        /// The invalid target reliability value
+        t: f64,
+    },
     /// s must be > 0 - task must have at least one step
-    InvalidStepCount { s: usize },
+    InvalidStepCount {
+        /// The invalid step count
+        s: usize,
+    },
     /// m must equal 1 for microagent architecture
-    InvalidStepsPerAgent { m: usize },
+    InvalidStepsPerAgent {
+        /// The invalid steps-per-agent value
+        m: usize,
+    },
 }
 
 impl std::fmt::Display for KminError {
@@ -79,7 +91,7 @@ impl std::error::Error for KminError {}
 /// # Formula
 ///
 /// ```text
-/// k_min = ⌈ln(t^(-m/s) - 1) / ln((1-p)/p)⌉
+/// k_min = ⌈ln(1 - t^(m/s)) / ln((1-p)/p)⌉
 /// ```
 ///
 /// # Examples

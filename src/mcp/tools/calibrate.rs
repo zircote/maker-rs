@@ -61,7 +61,10 @@ pub enum CalibrateError {
     /// Samples without responses (need to run LLM first)
     MissingResponses,
     /// Estimated p is too low for voting (p <= 0.5)
-    InsufficientAccuracy { p: f64 },
+    InsufficientAccuracy {
+        /// The estimated success probability
+        p: f64,
+    },
 }
 
 impl std::fmt::Display for CalibrateError {

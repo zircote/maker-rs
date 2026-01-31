@@ -30,7 +30,7 @@ cargo run --bin maker-mcp            # Run the MCP server
 - **`voting`** - `VoteRace`: thread-safe first-to-ahead-by-k vote tracker using `Arc<Mutex<HashMap>>`. A winner is declared when one candidate leads all others by >= k_margin votes
 - **`redflag`** - `RedFlagValidator`: discard-don't-repair validation. Checks token length, JSON schema conformance, and format rules. Returns `Vec<RedFlag>` (empty = valid)
 - **`executor`** - `vote_with_margin()`: the main integration point. Orchestrates the sample-validate-vote loop: generate LLM sample -> red-flag check -> cast vote -> check winner. Synchronous loop (not async) despite async LLM clients
-- **`orchestration`** - `TaskOrchestrator` and `TaskDecomposer` traits for microagent (m=1) task decomposition and state transfer between steps
+- **`orchestration`** - `TaskOrchestrator` struct and `TaskDecomposer` trait for microagent (m=1) task decomposition and state transfer between steps
 
 ### LLM Providers (`src/llm/`)
 
@@ -55,9 +55,15 @@ Note: There are two `LlmClient` traits. The async one in `src/llm/mod.rs` is for
 ### Key Dependencies
 
 - `rmcp` (0.13) - MCP SDK with `server`, `transport-io`, `macros` features
-- `tokio` - Async runtime (full features)
+- `tokio` (1) - Async runtime (full features)
+- `reqwest` (0.12) - HTTP client for LLM provider API calls
+- `serde` / `serde_json` - Serialization for requests, responses, and events
+- `tracing` - Structured logging and observability
 - `proptest` - Property-based testing (dev-dependency)
+- `wiremock` (0.6) - HTTP mock server for provider tests (dev-dependency)
 
 ### Examples
 
-- `examples/hanoi/` - Tower of Hanoi demonstration with task decomposition, showing the m=1 microagent pattern in practice
+- `examples/hanoi/` - Tower of Hanoi with task decomposition, showing the m=1 microagent pattern in practice
+- `examples/hanoi_demo.rs` - Standalone end-to-end Hanoi voting demonstration
+- `examples/custom_task.rs` - Template for custom task integration

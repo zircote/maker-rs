@@ -51,15 +51,22 @@ impl From<&str> for CandidateId {
 pub enum VoteCheckResult {
     /// A winner has been determined with the required k-margin
     Winner {
+        /// The winning candidate identifier
         candidate: CandidateId,
+        /// Total votes received by the winner
         votes: usize,
+        /// Margin of victory (>= k_margin)
         margin: usize,
     },
     /// No winner yet - race continues
     Ongoing {
+        /// Current leading candidate, if any
         leader: Option<CandidateId>,
+        /// Vote count of the leader
         leader_votes: usize,
+        /// Vote count of the runner-up
         runner_up_votes: usize,
+        /// Current margin between leader and runner-up
         current_margin: usize,
     },
 }
@@ -68,7 +75,10 @@ pub enum VoteCheckResult {
 #[derive(Debug, Clone, PartialEq)]
 pub enum VoteError {
     /// k_margin must be at least 1
-    InvalidKMargin { k: usize },
+    InvalidKMargin {
+        /// The invalid k value provided
+        k: usize,
+    },
 }
 
 impl std::fmt::Display for VoteError {
@@ -91,14 +101,20 @@ pub type VoteEventCallback = Box<dyn Fn(VoteEvent) + Send + Sync>;
 pub enum VoteEvent {
     /// A vote was cast for a candidate
     VoteCast {
+        /// The candidate that received the vote
         candidate_id: String,
+        /// Updated vote count for this candidate
         vote_count: usize,
+        /// Current margin between this candidate and nearest rival
         current_margin: i32,
     },
     /// A winner was declared
     VoteDecided {
+        /// The winning candidate identifier
         winner_id: String,
+        /// Total votes cast across all candidates
         total_votes: usize,
+        /// The k-margin threshold that was met
         k_margin: usize,
     },
 }

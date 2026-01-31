@@ -107,42 +107,46 @@ src/
 
 ### `maker/vote` - Error-Corrected Voting
 
+Request:
 ```json
-// Request
 { "prompt": "...", "k_margin": 3, "max_samples": 20 }
-
-// Response
+```
+Response:
+```json
 { "winner": "answer", "vote_counts": {"answer": 5}, "total_samples": 7 }
 ```
 
 ### `maker/validate` - Red-Flag Checking
 
+Request:
 ```json
-// Request
 { "response": "...", "token_limit": 700, "schema": {"required": ["move"]} }
-
-// Response
+```
+Response:
+```json
 { "valid": false, "red_flags": [{"flag_type": "TokenLengthExceeded", "details": "..."}] }
 ```
 
 ### `maker/calibrate` - Success Rate Estimation
 
+Request:
 ```json
-// Request
 { "samples": [{"prompt": "...", "ground_truth": "..."}] }
-
-// Response
+```
+Response:
+```json
 { "p_estimate": 0.87, "confidence_interval": [0.82, 0.92], "recommended_k": 4 }
 ```
 
 ### `maker/configure` - Runtime Configuration
 
+Request:
 ```json
-// Request
 { "k_default": 3, "temperature_diversity": 0.1, "token_limit": 700 }
-
-// Response
-{ "applied": true, "current_config": {...} }
+```
+Response:
+```json
+{ "applied": true, "current_config": {} }
 ```
 
 ## Cost Scaling

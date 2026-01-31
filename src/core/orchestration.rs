@@ -149,12 +149,20 @@ impl AgentOutput {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AgentOutputError {
     /// Failed to parse agent output JSON
-    ParseError { message: String },
+    ParseError {
+        /// Description of the parse failure
+        message: String,
+    },
     /// Agent output missing required field
-    MissingField { field: String },
+    MissingField {
+        /// Name of the missing field
+        field: String,
+    },
     /// State hash verification failed
     StateCorruption {
+        /// The hash that was expected
         expected_hash: String,
+        /// The hash that was computed
         actual_hash: String,
     },
 }

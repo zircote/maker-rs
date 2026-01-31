@@ -1,6 +1,6 @@
-//! Parallel Voting Integration for MAKER Framework
+//! Voting Integration for MAKER Framework
 //!
-//! Integrates parallel sampling, red-flagging, and voting into the complete
+//! Integrates sampling, red-flagging, and voting into the complete
 //! first-to-ahead-by-k protocol for error-corrected LLM execution.
 //!
 //! # Execution Flow
@@ -12,12 +12,13 @@
 //!
 //! # Usage
 //!
-//! ```rust,ignore
-//! use maker::core::executor::{vote_with_margin, VoteConfig, MockLlmClient};
+//! ```rust
+//! use maker::core::{vote_with_margin, VoteConfig, MockLlmClient};
 //!
-//! let client = MockLlmClient::new(vec!["correct_answer".to_string()]);
+//! let client = MockLlmClient::constant("correct_answer");
 //! let config = VoteConfig::default();
-//! let result = vote_with_margin("What is 2+2?", 3, &client, config).await?;
+//! let result = vote_with_margin("What is 2+2?", 3, &client, config).unwrap();
+//! assert_eq!(result.winner, "correct_answer");
 //! ```
 
 use crate::core::redflag::RedFlagValidator;
@@ -108,17 +109,31 @@ pub struct VoteResult {
 pub enum VoteError {
     /// No convergence within max samples
     NoConvergence {
+        /// Number of samples collected before stopping
         samples_collected: usize,
+        /// Maximum samples allowed
         max_samples: usize,
     },
     /// Timeout exceeded
-    Timeout { elapsed: Duration },
+    Timeout {
+        /// Time elapsed before timeout
+        elapsed: Duration,
+    },
     /// All samples were red-flagged
-    AllRedFlagged { total_samples: usize },
+    AllRedFlagged {
+        /// Total samples that were all discarded
+        total_samples: usize,
+    },
     /// LLM client error
-    LlmError { message: String },
+    LlmError {
+        /// Error message from the LLM client
+        message: String,
+    },
     /// Invalid configuration
-    InvalidConfig { message: String },
+    InvalidConfig {
+        /// Description of the configuration error
+        message: String,
+    },
 }
 
 impl std::fmt::Display for VoteError {

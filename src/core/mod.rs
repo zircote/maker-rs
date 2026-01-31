@@ -5,7 +5,7 @@
 //! - `voting`: First-to-ahead-by-k voting protocol
 //! - `redflag`: Red-flagging parsers for malformed outputs
 //! - `orchestration`: Microagent orchestration (m=1 constraint)
-//! - `executor`: Parallel voting integration
+//! - `executor`: Sample-validate-vote integration loop
 
 pub mod executor;
 pub mod kmin;
