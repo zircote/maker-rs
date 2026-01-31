@@ -15,6 +15,7 @@
 //! `VoteRace` is designed for concurrent vote casting using interior mutability.
 //! Multiple sampling tasks can cast votes simultaneously.
 
+use crate::core::matcher::{default_matcher, CandidateMatcher};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -123,6 +124,10 @@ pub enum VoteEvent {
 ///
 /// Tracks vote counts for multiple candidates and determines when a winner
 /// has achieved the required k-margin lead over all competitors.
+///
+/// When a `CandidateMatcher` is provided, responses are canonicalized before
+/// being used as candidate keys. This allows semantically equivalent responses
+/// to be grouped together during voting.
 pub struct VoteRace {
     /// Vote counts per candidate
     votes: Arc<Mutex<HashMap<CandidateId, usize>>>,
@@ -130,6 +135,8 @@ pub struct VoteRace {
     k_margin: usize,
     /// Optional event callback for observability
     event_callback: Option<Arc<VoteEventCallback>>,
+    /// Candidate matcher for response grouping
+    matcher: Arc<dyn CandidateMatcher>,
 }
 
 impl VoteRace {
@@ -150,7 +157,18 @@ impl VoteRace {
             votes: Arc::new(Mutex::new(HashMap::new())),
             k_margin,
             event_callback: None,
+            matcher: default_matcher(),
         })
+    }
+
+    /// Set a custom candidate matcher for response grouping.
+    ///
+    /// When set, responses are canonicalized via the matcher before being
+    /// used as candidate keys, allowing semantically equivalent responses
+    /// to share votes.
+    pub fn with_matcher(mut self, matcher: Arc<dyn CandidateMatcher>) -> Self {
+        self.matcher = matcher;
+        self
     }
 
     /// Set an event callback for observability
@@ -161,6 +179,10 @@ impl VoteRace {
 
     /// Cast a vote for a candidate
     ///
+    /// The candidate ID is canonicalized via the configured matcher before
+    /// being used as the vote key. This means two responses that the matcher
+    /// considers equivalent will accumulate votes under the same candidate.
+    ///
     /// This method is thread-safe and can be called concurrently from multiple tasks.
     ///
     /// # Arguments
@@ -169,18 +191,19 @@ impl VoteRace {
     ///
     /// # Returns
     ///
-    /// The new vote count for this candidate
+    /// The new vote count for this candidate (after canonicalization)
     pub fn cast_vote(&self, candidate: CandidateId) -> usize {
+        let canonical = CandidateId::new(self.matcher.canonicalize(candidate.as_str()));
         let mut votes = self.votes.lock().unwrap();
-        let count = votes.entry(candidate.clone()).or_insert(0);
+        let count = votes.entry(canonical.clone()).or_insert(0);
         *count += 1;
         let new_count = *count;
 
         // Calculate current margin for event
         if let Some(ref callback) = self.event_callback {
-            let margin = self.calculate_margin_internal(&votes, &candidate);
+            let margin = self.calculate_margin_internal(&votes, &canonical);
             callback(VoteEvent::VoteCast {
-                candidate_id: candidate.0,
+                candidate_id: canonical.0,
                 vote_count: new_count,
                 current_margin: margin,
             });
@@ -282,6 +305,7 @@ impl Clone for VoteRace {
             votes: Arc::new(Mutex::new(self.votes.lock().unwrap().clone())),
             k_margin: self.k_margin,
             event_callback: self.event_callback.clone(),
+            matcher: self.matcher.clone(),
         }
     }
 }

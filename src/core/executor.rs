@@ -21,9 +21,12 @@
 //! assert_eq!(result.winner, "correct_answer");
 //! ```
 
+use crate::core::adaptive::{KEstimator, VoteObservation};
+use crate::core::matcher::{default_matcher, CandidateMatcher};
 use crate::core::redflag::RedFlagValidator;
 use crate::core::voting::{CandidateId, VoteCheckResult, VoteRace};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// Configuration for voting execution
@@ -37,6 +40,8 @@ pub struct VoteConfig {
     pub diversity_temperature: f64,
     /// Timeout for the entire voting process
     pub timeout: Option<Duration>,
+    /// Candidate matcher for response grouping (default: ExactMatcher)
+    pub matcher: Arc<dyn CandidateMatcher>,
 }
 
 impl Default for VoteConfig {
@@ -46,6 +51,7 @@ impl Default for VoteConfig {
             token_limit: Some(700),
             diversity_temperature: 0.1,
             timeout: Some(Duration::from_secs(60)),
+            matcher: default_matcher(),
         }
     }
 }
@@ -72,6 +78,12 @@ impl VoteConfig {
     /// Create config with custom timeout
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
+        self
+    }
+
+    /// Create config with a custom candidate matcher
+    pub fn with_matcher(mut self, matcher: Arc<dyn CandidateMatcher>) -> Self {
+        self.matcher = matcher;
         self
     }
 }
@@ -102,6 +114,10 @@ pub struct VoteResult {
     pub cost: CostMetrics,
     /// Time taken for voting
     pub elapsed: Duration,
+    /// The k-margin actually used for this vote (may differ from requested if adaptive)
+    pub k_used: usize,
+    /// Current p-hat estimate (only set when adaptive mode is active)
+    pub p_hat: Option<f64>,
 }
 
 /// Errors during voting execution
@@ -283,9 +299,11 @@ pub fn vote_with_margin(
         None => RedFlagValidator::new().without_token_limit(),
     };
 
-    let race = VoteRace::new(k).map_err(|e| VoteError::InvalidConfig {
-        message: e.to_string(),
-    })?;
+    let race = VoteRace::new(k)
+        .map_err(|e| VoteError::InvalidConfig {
+            message: e.to_string(),
+        })?
+        .with_matcher(config.matcher.clone());
 
     let mut total_samples = 0;
     let mut red_flagged = 0;
@@ -364,6 +382,8 @@ pub fn vote_with_margin(
                 red_flagged,
                 cost,
                 elapsed: start.elapsed(),
+                k_used: k,
+                p_hat: None,
             });
         }
 
@@ -372,6 +392,53 @@ pub fn vote_with_margin(
             return Err(VoteError::AllRedFlagged { total_samples });
         }
     }
+}
+
+/// Execute adaptive voting with dynamic k-margin adjustment.
+///
+/// Like `vote_with_margin`, but uses a `KEstimator` to dynamically adjust
+/// the k-margin based on observed vote convergence. After each vote, the
+/// result is fed back to the estimator for future k adjustments.
+///
+/// # Arguments
+///
+/// * `prompt` - The prompt to send to the LLM
+/// * `estimator` - Mutable reference to the adaptive k-margin estimator
+/// * `target_t` - Target task reliability (e.g., 0.95)
+/// * `remaining_steps` - Steps remaining in the task
+/// * `client` - The LLM client to use for generation
+/// * `config` - Configuration for the voting process
+///
+/// # Returns
+///
+/// * `Ok(VoteResult)` - The winning response with metrics (includes k_used and p_hat)
+/// * `Err(VoteError)` - If voting fails to converge or times out
+pub fn vote_with_margin_adaptive(
+    prompt: &str,
+    estimator: &mut KEstimator,
+    target_t: f64,
+    remaining_steps: usize,
+    client: &dyn LlmClient,
+    config: VoteConfig,
+) -> Result<VoteResult, VoteError> {
+    let k = estimator.recommended_k(target_t, remaining_steps);
+
+    let mut result = vote_with_margin(prompt, k, client, config)?;
+
+    // Feed observation back to estimator
+    let observation = VoteObservation {
+        converged_quickly: result.total_samples <= k,
+        total_samples: result.total_samples,
+        k_used: k,
+        red_flagged: result.red_flagged,
+    };
+    estimator.observe(observation);
+
+    // Annotate result with adaptive info
+    result.k_used = k;
+    result.p_hat = Some(estimator.p_hat());
+
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -767,5 +834,142 @@ mod tests {
         assert_eq!(cost.input_tokens, 0);
         assert_eq!(cost.output_tokens, 0);
         assert!(cost.estimated_cost_usd.is_none());
+    }
+
+    // ==========================================
+    // Adaptive Voting Tests (STORY-011-02)
+    // ==========================================
+
+    #[test]
+    fn test_adaptive_vote_converges_with_unanimous() {
+        use crate::core::adaptive::{KEstimator, KEstimatorConfig};
+
+        let client = MockLlmClient::constant("correct");
+        let config = VoteConfig::default();
+        let mut estimator = KEstimator::new(KEstimatorConfig::default());
+
+        let result =
+            vote_with_margin_adaptive("test", &mut estimator, 0.95, 100, &client, config).unwrap();
+
+        assert_eq!(result.winner, "correct");
+        assert!(result.k_used >= 2); // Respects floor
+        assert!(result.p_hat.is_some());
+        assert_eq!(estimator.observation_count(), 1);
+    }
+
+    #[test]
+    fn test_adaptive_vote_feeds_back_to_estimator() {
+        use crate::core::adaptive::{KEstimator, KEstimatorConfig};
+
+        let client = MockLlmClient::constant("answer");
+        let config = VoteConfig::default();
+        let mut estimator = KEstimator::new(KEstimatorConfig::default());
+
+        // Run multiple adaptive votes
+        for i in 0..5 {
+            let result = vote_with_margin_adaptive(
+                &format!("step {}", i),
+                &mut estimator,
+                0.95,
+                100 - i,
+                &client,
+                config.clone(),
+            )
+            .unwrap();
+
+            assert_eq!(result.winner, "answer");
+            assert!(result.p_hat.is_some());
+        }
+
+        assert_eq!(estimator.observation_count(), 5);
+        // After unanimous votes, p_hat should be high
+        assert!(
+            estimator.p_hat() > 0.85,
+            "p_hat should be high after unanimous votes: {:.4}",
+            estimator.p_hat()
+        );
+    }
+
+    #[test]
+    fn test_adaptive_vote_backward_compatible_result_fields() {
+        use crate::core::adaptive::{KEstimator, KEstimatorConfig};
+
+        let client = MockLlmClient::constant("answer");
+        let config = VoteConfig::default();
+        let mut estimator = KEstimator::new(KEstimatorConfig::default());
+
+        let result =
+            vote_with_margin_adaptive("test", &mut estimator, 0.95, 100, &client, config).unwrap();
+
+        // All standard VoteResult fields should be populated
+        assert!(!result.winner.is_empty());
+        assert!(!result.vote_counts.is_empty());
+        assert!(result.total_samples > 0);
+        assert!(result.cost.input_tokens > 0);
+        assert!(result.elapsed.as_nanos() > 0);
+
+        // Adaptive-specific fields
+        assert!(result.k_used >= 2);
+        assert!(result.p_hat.is_some());
+    }
+
+    #[test]
+    fn test_static_vote_has_no_p_hat() {
+        let client = MockLlmClient::constant("answer");
+        let config = VoteConfig::default();
+
+        let result = vote_with_margin("test", 3, &client, config).unwrap();
+
+        // Static vote should not have p_hat
+        assert!(result.p_hat.is_none());
+        assert_eq!(result.k_used, 3);
+    }
+
+    #[test]
+    fn test_adaptive_reduces_k_over_time_with_high_p() {
+        use crate::core::adaptive::{KEstimator, KEstimatorConfig};
+
+        let client = MockLlmClient::constant("answer");
+        let config = VoteConfig::default();
+        let mut estimator = KEstimator::new(KEstimatorConfig {
+            initial_p_hat: 0.60, // Start with low p estimate (high k)
+            ema_alpha: 0.3,      // Faster convergence for test
+            ..Default::default()
+        });
+
+        let k_initial = estimator.recommended_k(0.95, 1000);
+
+        // Run many unanimous votes to drive p_hat up
+        for i in 0..20 {
+            let _ = vote_with_margin_adaptive(
+                &format!("step {}", i),
+                &mut estimator,
+                0.95,
+                1000,
+                &client,
+                config.clone(),
+            )
+            .unwrap();
+        }
+
+        let k_final = estimator.recommended_k(0.95, 1000);
+        assert!(
+            k_final <= k_initial,
+            "k should decrease with high p: {} -> {}",
+            k_initial,
+            k_final
+        );
+    }
+
+    #[test]
+    fn test_existing_tests_pass_unchanged() {
+        // Verify backward compatibility: vote_with_margin still works identically
+        let client = MockLlmClient::constant("correct");
+        let config = VoteConfig::default();
+
+        let result = vote_with_margin("test", 3, &client, config).unwrap();
+        assert_eq!(result.winner, "correct");
+        assert_eq!(result.total_samples, 3);
+        assert_eq!(result.red_flagged, 0);
     }
 }

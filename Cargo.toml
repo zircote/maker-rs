@@ -6,14 +6,22 @@ description = "MAKER Framework - Zero-error LLM agent execution via SPRT voting"
 license = "MIT"
 repository = "https://github.com/zircote/maker-rs"
 
+[features]
+default = []
+code-matcher = ["tree-sitter", "tree-sitter-rust", "tree-sitter-python", "tree-sitter-javascript"]
+
 [dependencies]
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
 rmcp = { version = "0.13", features = ["server", "transport-io", "macros"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full", "sync", "rt", "time", "signal"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tree-sitter = { version = "0.24", optional = true }
+tree-sitter-rust = { version = "0.23", optional = true }
+tree-sitter-python = { version = "0.23", optional = true }
+tree-sitter-javascript = { version = "0.23", optional = true }
 
 [dev-dependencies]
 proptest = "1"

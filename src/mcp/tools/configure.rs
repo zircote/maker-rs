@@ -6,8 +6,108 @@ use crate::mcp::server::ServerConfig;
 use rmcp::schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 
+/// Matcher configuration for candidate response grouping.
+///
+/// Determines how responses are compared during voting:
+/// - `exact`: String equality after whitespace normalization (default)
+/// - `embedding`: Cosine similarity of embedding vectors
+/// - `code`: AST-based comparison (requires `code-matcher` feature)
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum MatcherConfig {
+    /// Exact string matching after whitespace normalization (default)
+    #[default]
+    Exact,
+    /// Embedding-based semantic similarity matching
+    Embedding {
+        /// Similarity threshold for equivalence (0.0 to 1.0, default 0.92)
+        #[serde(default = "default_embedding_threshold")]
+        threshold: f64,
+        /// Embedding provider ("ollama" or "openai")
+        #[serde(default = "default_embedding_provider")]
+        provider: String,
+    },
+    /// Code AST matching via tree-sitter (requires `code-matcher` feature)
+    Code {
+        /// Programming language ("rust", "python", "javascript")
+        language: String,
+        /// Similarity threshold for equivalence (0.0 to 1.0, default 0.95)
+        #[serde(default = "default_code_threshold")]
+        threshold: f64,
+    },
+}
+
+fn default_embedding_threshold() -> f64 {
+    0.92
+}
+
+fn default_embedding_provider() -> String {
+    "ollama".to_string()
+}
+
+fn default_code_threshold() -> f64 {
+    0.95
+}
+
+
+
+impl MatcherConfig {
+    /// Get a human-readable type name for this matcher configuration.
+    pub fn type_name(&self) -> &str {
+        match self {
+            MatcherConfig::Exact => "exact",
+            MatcherConfig::Embedding { .. } => "embedding",
+            MatcherConfig::Code { .. } => "code",
+        }
+    }
+
+    /// Validate the matcher configuration.
+    pub fn validate(&self) -> Result<(), String> {
+        match self {
+            MatcherConfig::Exact => Ok(()),
+            MatcherConfig::Embedding {
+                threshold,
+                provider,
+            } => {
+                if !(0.0..=1.0).contains(threshold) {
+                    return Err(format!(
+                        "embedding threshold must be 0.0..1.0, got {}",
+                        threshold
+                    ));
+                }
+                if provider != "ollama" && provider != "openai" {
+                    return Err(format!(
+                        "embedding provider must be 'ollama' or 'openai', got '{}'",
+                        provider
+                    ));
+                }
+                Ok(())
+            }
+            MatcherConfig::Code {
+                language,
+                threshold,
+            } => {
+                if !(0.0..=1.0).contains(threshold) {
+                    return Err(format!(
+                        "code threshold must be 0.0..1.0, got {}",
+                        threshold
+                    ));
+                }
+                let valid = ["rust", "rs", "python", "py", "javascript", "js"];
+                if !valid.contains(&language.to_lowercase().as_str()) {
+                    return Err(format!(
+                        "code language must be rust/python/javascript, got '{}'",
+                        language
+                    ));
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Request for maker/configure tool
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRequest {
     /// Default k-margin for voting (optional)
@@ -22,6 +122,18 @@ pub struct ConfigRequest {
     /// Default LLM provider (optional)
     #[serde(default)]
     pub provider: Option<String>,
+    /// Enable adaptive k-margin adjustment (optional)
+    #[serde(default)]
+    pub adaptive_k: Option<bool>,
+    /// EMA smoothing factor for adaptive k estimation (optional, default 0.1)
+    #[serde(default)]
+    pub ema_alpha: Option<f64>,
+    /// Bounds for adaptive k as [min, max] (optional, default [2, 10])
+    #[serde(default)]
+    pub k_bounds: Option<(usize, usize)>,
+    /// Matcher configuration for candidate response grouping (optional)
+    #[serde(default)]
+    pub matcher: Option<MatcherConfig>,
 }
 
 impl ConfigRequest {
@@ -31,6 +143,10 @@ impl ConfigRequest {
             || self.temperature_diversity.is_some()
             || self.token_limit.is_some()
             || self.provider.is_some()
+            || self.adaptive_k.is_some()
+            || self.ema_alpha.is_some()
+            || self.k_bounds.is_some()
+            || self.matcher.is_some()
     }
 }
 
@@ -45,6 +161,10 @@ pub struct Config {
     pub token_limit: usize,
     /// Default LLM provider
     pub provider: String,
+    /// Whether adaptive k-margin is enabled
+    pub adaptive_k: bool,
+    /// Active matcher configuration
+    pub matcher: MatcherConfig,
 }
 
 impl From<&ServerConfig> for Config {
@@ -54,6 +174,8 @@ impl From<&ServerConfig> for Config {
             temperature_diversity: config.temperature_diversity,
             token_limit: config.token_limit,
             provider: config.provider.clone(),
+            adaptive_k: config.adaptive_k,
+            matcher: config.matcher.clone(),
         }
     }
 }
@@ -101,6 +223,32 @@ pub fn apply_config_updates(config: &mut ServerConfig, request: &ConfigRequest) 
         }
     }
 
+    if let Some(adaptive) = request.adaptive_k {
+        config.adaptive_k = adaptive;
+        applied = true;
+    }
+
+    if let Some(alpha) = request.ema_alpha {
+        if (0.0..=1.0).contains(&alpha) {
+            config.ema_alpha = alpha;
+            applied = true;
+        }
+    }
+
+    if let Some((min, max)) = request.k_bounds {
+        if min >= 1 && max >= min {
+            config.k_bounds = (min, max);
+            applied = true;
+        }
+    }
+
+    if let Some(ref matcher) = request.matcher {
+        if matcher.validate().is_ok() {
+            config.matcher = matcher.clone();
+            applied = true;
+        }
+    }
+
     applied
 }
 
@@ -125,6 +273,7 @@ mod tests {
             temperature_diversity: Some(0.2),
             token_limit: Some(1000),
             provider: Some("openai".to_string()),
+            ..Default::default()
         };
 
         let json = serde_json::to_string(&request).unwrap();
@@ -149,6 +298,8 @@ mod tests {
                 temperature_diversity: 0.15,
                 token_limit: 800,
                 provider: "anthropic".to_string(),
+                adaptive_k: false,
+                matcher: MatcherConfig::default(),
             },
         };
 
@@ -159,17 +310,12 @@ mod tests {
 
     #[test]
     fn test_config_request_has_updates() {
-        let empty = ConfigRequest {
-            k_default: None,
-            temperature_diversity: None,
-            token_limit: None,
-            provider: None,
-        };
+        let empty = ConfigRequest::default();
         assert!(!empty.has_updates());
 
         let with_k = ConfigRequest {
             k_default: Some(5),
-            ..empty.clone()
+            ..Default::default()
         };
         assert!(with_k.has_updates());
     }
@@ -179,9 +325,7 @@ mod tests {
         let mut config = ServerConfig::default();
         let request = ConfigRequest {
             k_default: Some(5),
-            temperature_diversity: None,
-            token_limit: None,
-            provider: None,
+            ..Default::default()
         };
 
         let applied = apply_config_updates(&mut config, &request);
@@ -193,10 +337,8 @@ mod tests {
     fn test_apply_config_updates_temperature() {
         let mut config = ServerConfig::default();
         let request = ConfigRequest {
-            k_default: None,
             temperature_diversity: Some(0.25),
-            token_limit: None,
-            provider: None,
+            ..Default::default()
         };
 
         let applied = apply_config_updates(&mut config, &request);
@@ -216,6 +358,7 @@ mod tests {
             temperature_diversity: Some(1.5), // Out of range
             token_limit: Some(0),             // Invalid
             provider: Some("".to_string()),   // Empty
+            ..Default::default()
         };
 
         let applied = apply_config_updates(&mut config, &request);
@@ -232,6 +375,7 @@ mod tests {
             temperature_diversity: Some(0.2),
             token_limit: Some(1000),
             provider: Some("anthropic".to_string()),
+            ..Default::default()
         };
 
         let applied = apply_config_updates(&mut config, &request);

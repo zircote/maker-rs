@@ -5,7 +5,7 @@
 
 use crate::mcp::tools::{
     calibrate::{execute_calibrate, CalibrateRequest},
-    configure::{apply_config_updates, Config, ConfigRequest, ConfigResponse},
+    configure::{apply_config_updates, Config, ConfigRequest, ConfigResponse, MatcherConfig},
     validate::{execute_validate, ValidateRequest},
     vote::{execute_vote, VoteRequest},
 };
@@ -31,6 +31,14 @@ pub struct ServerConfig {
     pub provider: String,
     /// Maximum prompt length (security)
     pub max_prompt_length: usize,
+    /// Whether adaptive k-margin adjustment is enabled
+    pub adaptive_k: bool,
+    /// EMA smoothing factor for adaptive k estimation
+    pub ema_alpha: f64,
+    /// Bounds for adaptive k as (min, max)
+    pub k_bounds: (usize, usize),
+    /// Active matcher configuration for candidate response grouping
+    pub matcher: MatcherConfig,
 }
 
 impl Default for ServerConfig {
@@ -41,6 +49,10 @@ impl Default for ServerConfig {
             token_limit: 700,
             provider: "ollama".to_string(),
             max_prompt_length: 10_000,
+            adaptive_k: false,
+            ema_alpha: 0.1,
+            k_bounds: (2, 10),
+            matcher: MatcherConfig::default(),
         }
     }
 }
@@ -269,6 +281,7 @@ mod tests {
             token_limit: 500,
             provider: "openai".to_string(),
             max_prompt_length: 5000,
+            ..Default::default()
         };
         let server = MakerServer::with_config(config);
         let info = server.get_info();
@@ -283,6 +296,7 @@ mod tests {
             token_limit: 1000,
             provider: "anthropic".to_string(),
             max_prompt_length: 20_000,
+            ..Default::default()
         };
         let server = MakerServer::with_config(config);
         let cfg = server.get_config().await;
@@ -330,6 +344,8 @@ mod tests {
             max_samples: Some(20),
             temperature_diversity: None,
             provider: None,
+            adaptive: None,
+            matcher: None,
         };
 
         let result = server.vote(Parameters(request)).await;
@@ -376,8 +392,7 @@ mod tests {
         let request = ConfigRequest {
             k_default: Some(5),
             temperature_diversity: Some(0.2),
-            token_limit: None,
-            provider: None,
+            ..Default::default()
         };
 
         let result = server.configure(Parameters(request)).await;
