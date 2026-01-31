@@ -253,7 +253,7 @@ Configure via MCP:
 }
 ```
 
-Cost-aware ensemble saves 87.5%+ vs single expensive model. See [BENCHMARKS.md](./BENCHMARKS.md) for full results.
+Cost-aware ensemble saves 87.5%+ vs single expensive model. See [BENCHMARKS.md](./docs/project/BENCHMARKS.md) for full results.
 
 ## Benchmarks
 
@@ -267,7 +267,7 @@ cargo bench --bench cost_scaling        # Θ(s ln s) cost validation
 cargo bench --bench ensemble_comparison # Single-model vs ensemble comparison
 ```
 
-See [BENCHMARKS.md](./BENCHMARKS.md) for detailed results and acceptance criteria.
+See [BENCHMARKS.md](./docs/project/BENCHMARKS.md) for detailed results and acceptance criteria.
 
 ## Development
 
