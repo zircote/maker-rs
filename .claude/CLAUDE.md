@@ -16,6 +16,8 @@ cargo test                           # Run all tests (unit + integration)
 cargo test --lib                     # Unit tests only
 cargo test --test properties         # Property-based tests (proptest)
 cargo test --test mcp_integration    # MCP integration tests
+cargo test --test semantic_matching  # Semantic matching tests
+cargo test --features code-matcher   # Include tree-sitter code matcher tests
 cargo test <test_name>               # Run a single test by name
 cargo clippy                         # Lint
 cargo fmt --check                    # Check formatting
@@ -27,9 +29,12 @@ cargo run --bin maker-mcp            # Run the MCP server
 ### Core Algorithms (`src/core/`)
 
 - **`kmin`** - Calculates minimum k-margin needed for target reliability given per-step success probability (p), target reliability (t), total steps (s), and steps-per-agent (m=1)
-- **`voting`** - `VoteRace`: thread-safe first-to-ahead-by-k vote tracker using `Arc<Mutex<HashMap>>`. A winner is declared when one candidate leads all others by >= k_margin votes
+- **`voting`** - `VoteRace`: thread-safe first-to-ahead-by-k vote tracker using `Arc<Mutex<HashMap>>`. Accepts `Arc<dyn CandidateMatcher>` for pluggable candidate grouping. A winner is declared when one candidate leads all others by >= k_margin votes
 - **`redflag`** - `RedFlagValidator`: discard-don't-repair validation. Checks token length, JSON schema conformance, and format rules. Returns `Vec<RedFlag>` (empty = valid)
-- **`executor`** - `vote_with_margin()`: the main integration point. Orchestrates the sample-validate-vote loop: generate LLM sample -> red-flag check -> cast vote -> check winner. Synchronous loop (not async) despite async LLM clients
+- **`executor`** - `vote_with_margin()`: the main integration point. Orchestrates the sample-validate-vote loop. `vote_with_margin_adaptive()` adds dynamic k adjustment via `KEstimator`
+- **`adaptive`** - `KEstimator`: EMA-based p-hat estimation with `recommended_k()`. Configurable bounds (floor/ceiling) and smoothing alpha
+- **`matcher`** - `CandidateMatcher` trait with `canonicalize()`, `are_equivalent()`, `similarity_score()`. `ExactMatcher` is the default (backward compatible)
+- **`matchers/`** - Module containing `EmbeddingMatcher` (cosine similarity with caching), `OllamaEmbeddingClient`, `OpenAiEmbeddingClient`, and `CodeMatcher` (tree-sitter AST comparison, behind `code-matcher` feature flag)
 - **`orchestration`** - `TaskOrchestrator` struct and `TaskDecomposer` trait for microagent (m=1) task decomposition and state transfer between steps
 
 ### LLM Providers (`src/llm/`)
@@ -56,9 +61,10 @@ Note: There are two `LlmClient` traits. The async one in `src/llm/mod.rs` is for
 
 - `rmcp` (0.13) - MCP SDK with `server`, `transport-io`, `macros` features
 - `tokio` (1) - Async runtime (full features)
-- `reqwest` (0.12) - HTTP client for LLM provider API calls
+- `reqwest` (0.12) - HTTP client for LLM provider API calls (includes `blocking` feature for embedding clients)
 - `serde` / `serde_json` - Serialization for requests, responses, and events
 - `tracing` - Structured logging and observability
+- `tree-sitter`, `tree-sitter-rust`, `tree-sitter-python`, `tree-sitter-javascript` - AST parsing for CodeMatcher (optional, behind `code-matcher` feature)
 - `proptest` - Property-based testing (dev-dependency)
 - `wiremock` (0.6) - HTTP mock server for provider tests (dev-dependency)
 

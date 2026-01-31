@@ -5,335 +5,311 @@
 > Items marked with ⊘ are blocked until dependencies complete.
 
 **Generated:** 2026-01-30
-**Total Story Points:** 132
-**Timeline:** 14 days (3 sprints)
+**Updated:** 2026-01-30 (post-MVP sprints added)
+**Total Story Points:** 132 (MVP) + 93 (post-MVP) = 225
+**Timeline:** 10 weeks (3 sprints MVP + 4 sprints post-MVP)
 
 ---
 
-## Sprint 1 — Core MAKER Algorithms — Days 1-5
+## Sprint 1 — Core MAKER Algorithms — Days 1-5 ✅ COMPLETE
 
-**Objective:** Implement mathematically correct core algorithms with comprehensive testing.
-**Story Points:** 42
+**Story Points:** 42 | **Status:** All items complete
 
-### EPIC-001: Core MAKER Library (24 pts)
-
-- [x] **STORY-001-01** — k_min Calculation (3 pts) ✅
-  - [x] Create src/core/kmin.rs
-  - [x] Implement formula: k_min = ⌈ln(1 - t^(m/s)) / ln((1-p)/p)⌉
-  - [x] Add input validation and edge case handling
-  - [x] ✓ Function returns correct k_min for paper test cases
-  - [x] ✓ Property test: k_min increases logarithmically with s
-  - [x] ✓ Property tests for p and t relationships pass
-
-- [x] **STORY-001-02** — Vote Race State Tracking (5 pts) ✅
-  - [x] Create src/core/voting.rs with VoteRace struct
-  - [x] Implement cast_vote and check_winner methods
-  - [x] Make thread-safe, emit events (via callback)
-  - [x] ✓ Winner correctly identified when lead = k_margin
-  - [x] ✓ No false positives
-  - [x] ✓ Events emitted via callback (EventBus integration in EPIC-004)
-
-- [x] **STORY-001-03** — Red-Flagging Parsers (3 pts) ✅
-  - [x] Create src/core/redflag.rs with RedFlag enum
-  - [x] Implement token length and schema validation
-  - [x] ✓ Rejects 701 tokens when limit is 700
-  - [x] ✓ Rejects missing JSON fields
-  - [x] ✓ Accepts valid responses
-
-- [x] **STORY-001-04** — Microagent Orchestration (5 pts) ✅
-  - [x] Create src/core/orchestration.rs
-  - [x] Define Subtask, AgentOutput, State types
-  - [x] Implement TaskDecomposer trait, enforce m=1
-  - [x] ✓ Cannot create agent with m > 1 (panics)
-  - [x] ✓ State transfer works correctly
-  - [x] ✓ State hash prevents corruption
-
-- [x] **STORY-001-05** — Parallel Voting Integration (8 pts) ✅
-  - [x] Create src/core/executor.rs
-  - [x] Implement vote_with_margin orchestration
-  - [x] Write integration test with mock LLM
-  - [x] ✓ Zero errors on 3-disk Hanoi (7 steps)
-  - [x] ✓ Voting converges within expected samples
-  - [x] ✓ Red-flagged samples excluded
-
-### EPIC-004: Event-Driven Observability (13 pts)
-
-- [x] **STORY-004-01** — Event Definitions (2 pts) ✅
-  - [x] Create src/events/mod.rs with MakerEvent enum
-  - [x] Add all event variants with timestamps
-  - [x] ✓ Events serialize to JSON with type tag
-  - [x] ✓ Events are immutable and Clone
-
-- [x] **STORY-004-02** — EventBus Implementation (3 pts) ✅
-  - [x] Create src/events/bus.rs with broadcast channel
-  - [x] Implement emit and subscribe methods
-  - [x] ✓ Multiple subscribers receive all events
-  - [x] ✓ Emit is non-blocking
-
-- [x] **STORY-004-03** — Logging Observer (3 pts) ✅
-  - [x] Create src/events/observers/logging.rs
-  - [x] Add tracing dependency, implement observer
-  - [x] ✓ VoteDecided logged at INFO
-  - [x] ✓ RedFlagTriggered logged at WARN
-
-- [x] **STORY-004-04** — Metrics Observer (5 pts) ✅
-  - [x] Create src/events/observers/metrics.rs
-  - [x] Track counters and histograms
-  - [x] ✓ Metrics increment on events
-  - [x] ✓ Cost metric includes pricing
-
-### EPIC-005: Testing Infrastructure - Phase 1 (5 pts)
-
-- [x] **STORY-005-01** — Property-Based Testing Framework (5 pts) ✅
-  - [x] Add proptest dependency
-  - [x] Create tests/properties.rs
-  - [x] Write k_min, voting, red-flag properties
-  - [x] ✓ Properties pass with 1000+ inputs
-  - [x] ✓ Tests complete in <60s
-
-**Sprint 1 Gate:**
-- [x] Zero errors on 3-disk Towers of Hanoi (7 steps) ✅
-- [x] 95% test coverage on core modules (requires cargo-llvm-cov) ✅ (94.22% line / 95.45% function, CI threshold 90%)
-- [x] Events emit correctly to observers ✅
-- [x] Property-based tests pass (1000+ iterations) ✅
+- [x] STORY-001-01 through STORY-001-05 (EPIC-001: Core Library) ✅
+- [x] STORY-004-01 through STORY-004-04 (EPIC-004: Observability) ✅
+- [x] STORY-005-01 (EPIC-005: Property Tests) ✅
 
 ---
 
-## Sprint 2 — MCP Server Integration — Days 6-10
+## Sprint 2 — MCP Server Integration — Days 6-10 ✅ COMPLETE
 
-**Objective:** Expose MAKER as an MCP server with multi-provider LLM support.
-**Story Points:** 58
+**Story Points:** 58 | **Status:** All items complete
 
-### EPIC-002: LLM Provider Abstraction (28 pts)
-
-- [x] **STORY-002-01** — LlmClient Trait (3 pts) ✅
-  - [x] Create src/llm/mod.rs with trait definition
-  - [x] Define LlmResponse, TokenUsage, LlmError
-  - [x] ✓ Trait is async and object-safe
-  - [x] ✓ Error variants cover all modes
-
-- [x] **STORY-002-02** — Ollama Client (5 pts) ✅
-  - [x] Create src/llm/ollama.rs
-  - [x] Implement HTTP client for /api/generate
-  - [x] ✓ Successful generation returns content
-  - [x] ✓ Connection failure returns NetworkError
-
-- [x] **STORY-002-03** — OpenAI Client (5 pts) ✅
-  - [x] Create src/llm/openai.rs
-  - [x] Implement chat.completions.create call
-  - [x] ✓ API key from env var
-  - [x] ✓ 429 returns RateLimited with retry_after
-
-- [x] **STORY-002-04** — Anthropic Client (5 pts) ✅
-  - [x] Create src/llm/anthropic.rs
-  - [x] Implement messages API call
-  - [x] ✓ Token usage includes input/output
-  - [x] ✓ Cost calculation matches pricing
-
-- [x] **STORY-002-05** — Exponential Backoff Retry (5 pts) ✅
-  - [x] Create src/llm/retry.rs
-  - [x] Implement call_with_retry with jitter
-  - [x] ✓ 429 errors retry with backoff
-  - [x] ✓ Retry-After header respected
-
-- [x] **STORY-002-06** — Parallel Sampling (5 pts) ✅
-  - [x] Create src/llm/sampler.rs with JoinSet
-  - [x] Implement T=0 first, T=0.1 rest strategy
-  - [x] ✓ Latency ≈ 1x single API call
-  - [x] ✓ 10 parallel ≈ 1.2x single time
-
-### EPIC-003: MCP Server Implementation (22 pts)
-
-- [x] **STORY-003-01** — rmcp Server Setup (3 pts) ✅
-  - [x] Create src/bin/maker-mcp.rs
-  - [x] Initialize rmcp with stdio transport
-  - [x] ✓ Server starts and listens
-  - [x] ✓ Ctrl+C graceful shutdown
-
-- [x] **STORY-003-02** — maker/vote Tool (5 pts) ✅
-  - [x] Create src/mcp/tools/vote.rs
-  - [x] Implement vote_handler
-  - [x] ✓ Valid request returns winner
-  - [x] ✓ Invalid k_margin returns error
-
-- [x] **STORY-003-03** — maker/validate Tool (3 pts) ✅
-  - [x] Create src/mcp/tools/validate.rs
-  - [x] Return all triggered red-flags
-  - [x] ✓ Valid response: valid=true
-  - [x] ✓ Invalid response: valid=false with flags
-
-- [x] **STORY-003-04** — maker/calibrate Tool (5 pts) ✅
-  - [x] Create src/mcp/tools/calibrate.rs
-  - [x] Calculate p and confidence interval
-  - [x] ✓ p_estimate = correct/total
-  - [x] ✓ Recommended k included
-
-- [x] **STORY-003-05** — maker/configure Tool (3 pts) ✅
-  - [x] Create src/mcp/tools/configure.rs
-  - [x] Store config in server state
-  - [x] ✓ Config updated in state
-  - [x] ✓ Subsequent votes use defaults
-
-- [x] **STORY-003-06** — Schema Validation (3 pts) ✅
-  - [x] Add deny_unknown_fields to all requests
-  - [x] Validate LLM outputs via red-flags
-  - [x] ✓ Invalid JSON rejected
-  - [x] ✓ No injection bypasses
-
-### EPIC-008: Security & Guardrails (8 pts)
-
-- [x] **STORY-008-01** — Schema Enforcement (3 pts) ✅
-  - [x] Define agent output schema (move, next_state)
-  - [x] Add red-flag rules for violations
-  - [x] ✓ Missing next_state triggers FormatViolation
-  - [x] ✓ Schema violations logged
-
-- [x] **STORY-008-02** — Prompt Injection Protection (3 pts) ✅
-  - [x] Add prompt length validation (10K max)
-  - [x] Create SECURITY.md
-  - [x] ✓ Prompt > 10K rejected
-  - [x] ✓ SECURITY.md created
-
-- [x] **STORY-008-03** — Microagent Isolation (2 pts) ✅
-  - [x] Enforce no history in Subtask
-  - [x] Validate state transfer format
-  - [x] ✓ Agent only receives current state
-  - [x] ✓ State corruption detected
-
-### EPIC-005: Testing Infrastructure - Phase 2 (5 pts)
-
-- [x] **STORY-005-03** — MCP Protocol Compliance Tests (5 pts) ✅
-  - [x] Create tests/mcp_integration.rs
-  - [x] Test all 4 tools with mock LLM
-  - [x] ✓ All 4 tools pass integration tests
-  - [x] ✓ Invalid JSON rejected
-
-**Sprint 2 Gate:**
-- [x] All 4 MCP tools functional ✅ (35 integration tests pass)
-- [x] Claude Code integration working (manual test) ✅ (MCP server starts, initialize handshake verified, all 4 tools registered)
-- [x] Parallel sampling 10x faster than sequential ✅ (JoinSet implementation)
-- [x] Security audit passes (no prompt injection) ✅ (EPIC-008 complete)
+- [x] STORY-002-01 through STORY-002-06 (EPIC-002: LLM Providers) ✅
+- [x] STORY-003-01 through STORY-003-06 (EPIC-003: MCP Server) ✅
+- [x] STORY-008-01 through STORY-008-03 (EPIC-008: Security) ✅
+- [x] STORY-005-03 (EPIC-005: MCP Compliance Tests) ✅
 
 ---
 
-## Sprint 3 — Validation & Hardening — Days 11-14
+## Sprint 3 — Validation & Hardening — Days 11-14 ✅ COMPLETE
 
-**Objective:** Demonstrate production readiness through benchmarks and documentation.
-**Story Points:** 32
+**Story Points:** 32 | **Status:** All items complete, v0.1.0 released
 
-### EPIC-006: Demo & Benchmarks (18 pts)
+- [x] STORY-006-01 through STORY-006-04 (EPIC-006: Demo & Benchmarks) ✅
+- [x] STORY-007-01 through STORY-007-05 (EPIC-007: Documentation) ✅
+- [x] STORY-005-02, STORY-005-04 (EPIC-005: Monte Carlo, CI/CD) ✅
 
-- [x] **STORY-006-01** — Hanoi Task Decomposition (5 pts) ✅
-  - [x] Create examples/hanoi/mod.rs
-  - [x] Implement HanoiState and HanoiDecomposer
-  - [x] ✓ 3-disk generates 7 steps
-  - [x] ✓ 10-disk generates 1,023 steps
-
-- [x] **STORY-006-02** — End-to-End 10-Disk Hanoi (5 pts) ✅
-  - [x] Create examples/hanoi_demo.rs
-  - [x] Execute all steps with voting
-  - [x] ✓ Zero errors (1,023 steps match ground truth)
-  - [x] ✓ Cost logged in tokens
-
-- [x] **STORY-006-03** — Cost Scaling Benchmark (5 pts) ✅
-  - [x] Create benches/cost_scaling.rs
-  - [x] Run for n ∈ {3, 5, 7}
-  - [x] ✓ Fit shows Θ(s ln s)
-  - [x] ✓ Results exported to JSON
-
-- [x] **STORY-006-04** — Naive Retry Comparison (3 pts) ✅
-  - [x] Implement naive retry baseline (tests/monte_carlo.rs)
-  - [x] Compare costs
-  - [x] ✓ MAKER cost < naive (exponential blowup demonstrated)
-  - [x] ✓ Comparison in README ✅
-
-### EPIC-007: Documentation (14 pts)
-
-- [x] **STORY-007-01** — README.md Update (5 pts) ✅
-  - [x] Add implementation details, quickstart
-  - [x] Add architecture diagram, tool reference
-  - [x] ✓ README under 500 lines
-  - [x] ✓ Quickstart works in <5 minutes
-
-- [x] **STORY-007-02** — API Documentation (3 pts) ✅
-  - [x] Add doc comments to all public APIs
-  - [x] Include examples in doc comments
-  - [x] ✓ All public APIs documented
-  - [x] ✓ Doc tests pass
-
-- [x] **STORY-007-03** — Example Integrations (3 pts) ✅
-  - [x] Create examples/hanoi.rs and custom_task.rs
-  - [x] Create examples/hanoi_demo.rs
-  - [x] ✓ All examples compile and run
-  - [x] ✓ Examples linked from README
-
-- [x] **STORY-007-04** — Security Documentation (2 pts) ✅
-  - [x] Add Security section to README
-  - [x] Ensure SECURITY.md complete
-  - [x] ✓ MCP risks documented
-  - [x] ✓ Responsible disclosure documented
-
-- [x] **STORY-007-05** — CHANGELOG.md for v0.1.0 (1 pt) ✅
-  - [x] Update CHANGELOG with v0.1.0 features
-  - [x] ✓ Keep a Changelog format
-  - [x] ✓ ISO 8601 date
-
-### EPIC-005: Testing Infrastructure - Phase 3 (8 pts)
-
-- [x] **STORY-005-02** — Monte Carlo Cost Validation (5 pts) ✅
-  - [x] Create tests/monte_carlo.rs
-  - [x] Run simulations, compare to theoretical
-  - [x] ✓ Cost ratio matches Θ(s ln s) within 50%
-  - [x] ✓ MAKER < naive demonstrated
-
-- [x] **STORY-005-04** — CI/CD Pipeline (3 pts) ✅
-  - [x] Create .github/workflows/ci.yml
-  - [x] Configure coverage enforcement
-  - [x] ✓ CI runs on every PR
-  - [x] ✓ Coverage threshold enforced
-
-**Sprint 3 Gate:**
-- [x] Zero errors on 10-disk Hanoi (1,023 steps) ✅
-- [x] Cost scaling Θ(s ln s) validated empirically ✅
-- [x] README complete with quickstart ✅
-- [x] v0.1.0 GitHub release published ✅
+**v0.1.0 Released:** https://github.com/zircote/maker-rs/releases/tag/v0.1.0
 
 ---
 
-## Final Validation
+## Sprint 4 — Adaptive K-Margin — Weeks 3-4 ✅ COMPLETE
 
-- [x] All acceptance criteria met across all epics ✅
-- [x] Zero errors on 10-disk Towers of Hanoi (1,023 steps) ✅
-- [x] 95% test coverage verified (cargo llvm-cov) ✅ (94.22% line / 95.45% function)
-- [x] Cost scaling Θ(s ln s) validated within 20% ✅
-- [x] All 4 MCP tools tested with Claude Code ✅ (35 integration tests)
-- [x] Security audit passed (no prompt injection) ✅
-- [x] README complete with quickstart ✅
-- [x] API docs generated (cargo doc) ✅
-- [x] CHANGELOG updated for v0.1.0 ✅
-- [x] SECURITY.md created ✅
-- [x] CI/CD pipeline green ✅
-- [x] Git tag: `git tag -a v0.1.0 -m "MAKER Framework v0.1.0 MVP"` ✅
-- [x] GitHub release created ✅ (https://github.com/zircote/maker-rs/releases/tag/v0.1.0)
+**Objective:** Implement dynamic k-margin adjustment for cost optimization.
+**Story Points:** 23 | **Status:** All items complete
+
+### EPIC-011: Adaptive K-Margin (23 pts)
+
+- [x] **STORY-011-01** — K-Margin Estimator (5 pts) ✅
+  - [x] Create `src/core/adaptive.rs` with `KEstimator` struct
+  - [x] Implement EMA-based p-hat estimation (α=0.1)
+  - [x] Implement `recommended_k()` using live p-hat in k_min formula
+  - [x] Add k bounds: floor=2, ceiling=10
+  - [x] ✓ p_hat converges to ±5% of true p after 20 observations
+  - [x] ✓ k increases when observed p drops, decreases when p rises
+  - [x] ✓ k never violates bounds
+
+- [x] **STORY-011-02** — Adaptive Voting Integration (8 pts) ✅
+  - [x] Add `vote_with_margin_adaptive()` wrapping `vote_with_margin` with `KEstimator`
+  - [x] Feed vote results back to estimator after each decision
+  - [x] Preserve backward compatibility (adaptive: false = static k)
+  - [x] ✓ Existing tests pass unchanged (357 unit + 35 integration)
+  - [x] ✓ Adaptive reduces API calls vs. static k
+  - [x] ✓ Zero errors maintained on deterministic tasks
+
+- [x] **STORY-011-03** — Adaptive K MCP Extension (5 pts) ✅
+  - [x] Extend `ConfigRequest` with adaptive_k, ema_alpha, k_bounds
+  - [x] Extend `VoteResponse` with k_used, p_hat
+  - [x] Extend `ServerConfig` with adaptive_k, ema_alpha, k_bounds
+  - [x] ✓ Configure adaptive mode via MCP tool
+  - [x] ✓ VoteResponse includes k_used and p_hat
+  - [x] ✓ Backward compatible
+
+- [x] **STORY-011-04** — Adaptive K Validation Suite (5 pts) ✅
+  - [x] Property tests: adaptive k respects bounds, p_hat stays valid, high p gives lower k
+  - [x] Monte Carlo: adaptive cost comparison vs static
+  - [x] Regression: zero errors on deterministic task with adaptive k
+  - [x] Stress test: k recovers when p suddenly drops
+  - [x] ✓ All 21 property tests pass
+  - [x] ✓ Cost comparison validates adaptive approach
+  - [x] ✓ Stress test passes (k increases on p drop)
+
+**Sprint 4 Gate:**
+- [x] Adaptive k implemented with configurable bounds and EMA estimation
+- [x] All existing tests pass (backward compatible) — 423 total tests, 0 failures
+- [x] KEstimator converges within 20 observations
+- [x] Clippy clean, no warnings
 
 ---
 
-## Release Commands
+## Sprint 5 — Semantic Matching — Weeks 5-6 ✅ COMPLETE
+
+**Objective:** Extend voting to non-deterministic tasks via pluggable matchers.
+**Story Points:** 28 | **Status:** All items complete
+
+### EPIC-009: Semantic Matching (28 pts)
+
+- [x] **STORY-009-01** — Matcher Trait Abstraction (5 pts) ✅
+  - [x] Create `src/core/matcher.rs` with `CandidateMatcher` trait
+  - [x] Implement `ExactMatcher` (current behavior)
+  - [x] Modify `VoteRace` to accept `Arc<dyn CandidateMatcher>`
+  - [x] Update `vote_with_margin` to use matcher for candidate grouping
+  - [x] ✓ All existing tests pass with ExactMatcher (backward compat)
+  - [x] ✓ CandidateMatcher is object-safe, Send + Sync
+
+- [x] **STORY-009-02** — Embedding-Based Similarity Matcher (8 pts) ✅
+  - [x] Create `src/core/matchers/embedding.rs`
+  - [x] Define `EmbeddingClient` trait, implement for Ollama and OpenAI
+  - [x] Implement cosine similarity with configurable threshold (default 0.92)
+  - [x] Add embedding cache to avoid redundant API calls
+  - [x] ✓ Cosine similarity correct for known pairs
+  - [x] ✓ Cache hit rate >80% in voting scenarios
+  - [x] ✓ Semantically equivalent code snippets grouped correctly
+
+- [x] **STORY-009-03** — Code AST Matcher (8 pts) ✅
+  - [x] Create `src/core/matchers/code.rs`
+  - [x] Add tree-sitter dependency for multi-language parsing (behind `code-matcher` feature)
+  - [x] Implement AST normalization: alpha-renaming, comment stripping
+  - [x] Implement LCS-based token similarity scoring
+  - [x] Support Rust, Python, JavaScript grammars
+  - [x] ✓ `def foo(x): return x+1` ≡ `def bar(y): return y + 1`
+  - [x] ✓ Parsing errors fall back to whitespace-normalized comparison
+
+- [x] **STORY-009-04** — Matcher MCP Configuration (3 pts) ✅
+  - [x] Extend `ConfigRequest` with matcher config (exact/embedding/code)
+  - [x] Extend `VoteResponse` with matcher_type, candidate_groups
+  - [x] Add matcher parameter to VoteRequest for per-call override
+  - [x] ✓ Default matcher is "exact" (backward compatible)
+  - [x] ✓ Invalid matcher config returns clear error via `MatcherConfig::validate()`
+
+- [x] **STORY-009-05** — Semantic Matching Test Suite (4 pts) ✅
+  - [x] Build test corpus: 47 equivalent code pairs, 50 NL pairs, 25 negative code pairs
+  - [x] Test CodeMatcher accuracy: >95% on code corpus (achieved 100% on curated corpus)
+  - [x] Test EmbeddingMatcher mechanism with mock client + high-overlap NL pairs
+  - [x] Test false positive rate <5% on structurally different code pairs
+  - [x] ✓ CodeMatcher >95% accuracy (per-language and combined)
+  - [x] ✓ EmbeddingMatcher mechanism validated (real accuracy requires live providers)
+  - [x] ✓ Code false positive rate <5%
+  - [x] ✓ Reflexivity and symmetry properties verified for all matchers
+
+**Sprint 5 Gate:**
+- [x] Matcher trait extensible (custom matchers via `CandidateMatcher` trait)
+- [x] Code AST matcher handles Python, Rust, JS (behind `code-matcher` feature)
+- [x] Embedding matcher works with Ollama and OpenAI clients
+- [x] All existing exact-match tests still pass — 419 unit + 35 integration + 21 property
+- [x] 25 semantic matching tests (16 without code-matcher, 25 with)
+- [x] Clippy clean, zero warnings
+- [x] Total tests: 501 (with code-matcher feature), 485 (without)
+
+---
+
+## Sprint 6 — Multi-Model Ensemble — Weeks 7-8
+
+**Objective:** Enable voting across heterogeneous LLM models.
+**Story Points:** 25
+
+### EPIC-010: Multi-Model Ensemble (25 pts)
+
+- [ ] **STORY-010-01** — Ensemble Configuration (5 pts)
+  - [ ] Create `src/llm/ensemble.rs` with EnsembleConfig, ModelSlot, EnsembleStrategy
+  - [ ] Implement RoundRobin, CostAware, ReliabilityWeighted strategies
+  - [ ] Implement model selection for each sample index
+  - [ ] ✓ 2-5 models configurable
+  - [ ] ✓ RoundRobin distributes evenly
+  - [ ] ✓ Single-model mode unchanged
+
+- [ ] **STORY-010-02** — Ensemble Sampling Integration (5 pts) ⊘ STORY-010-01
+  - [ ] Modify `collect_samples` for ensemble model selection
+  - [ ] Tag samples with source model name
+  - [ ] Handle per-model failures with graceful fallback
+  - [ ] ✓ Samples from multiple models (verified by model_name)
+  - [ ] ✓ Model failure doesn't halt voting
+  - [ ] ✓ Latency ≈ max(individual) not sum
+
+- [ ] **STORY-010-03** — Cost-Aware Routing (5 pts) ⊘ STORY-010-01, STORY-010-02
+  - [ ] Implement 3-phase CostAware strategy (cheap → medium → expensive)
+  - [ ] Track cost per model in VoteResult
+  - [ ] Emit EscalationTriggered event on tier change
+  - [ ] ✓ Easy tasks resolved by cheap model only
+  - [ ] ✓ Total cost < single-expensive-model by 30%+
+  - [ ] ✓ Cost breakdown by model in VoteResponse
+
+- [ ] **STORY-010-04** — Ensemble MCP Extension (5 pts) ⊘ STORY-010-02
+  - [ ] Extend ConfigRequest with ensemble config
+  - [ ] Extend VoteResponse with ensemble_metrics
+  - [ ] Add per-call ensemble override
+  - [ ] ✓ Ensemble configurable via MCP
+  - [ ] ✓ Per-model breakdown in response
+  - [ ] ✓ Backward compatible
+
+- [ ] **STORY-010-05** — Cross-Model Benchmarks (5 pts) ⊘ STORY-010-03
+  - [ ] Create `benches/ensemble_comparison.rs`
+  - [ ] Benchmark: single-model vs. round-robin vs. cost-aware
+  - [ ] Monte Carlo: 1,000 trials at s=100, s=1000
+  - [ ] ✓ Ensemble error rate < individual models
+  - [ ] ✓ Cost-aware 30%+ cheaper than expensive-only
+  - [ ] ✓ Results documented
+
+**Sprint 6 Gate:**
+- [ ] Ensemble voting works across 2+ models
+- [ ] Cost-aware routing reduces cost by 30%+
+- [ ] Ensemble improves reliability over any single model
+- [ ] Backward compatible (single-model default unchanged)
+- [ ] 95% test coverage maintained
+
+---
+
+## Sprint 7 — Benchmark Suite & v0.2.0 Release — Weeks 9-10
+
+**Objective:** Comprehensive benchmarks and v0.2.0 release.
+**Story Points:** 17
+
+### EPIC-012: Benchmark Suite (10 pts)
+
+- [ ] **STORY-012-01** — Coding Task Benchmark (3 pts)
+  - [ ] Create `benches/coding_tasks/` with 10 coding benchmarks
+  - [ ] Use CodeMatcher for equivalence
+  - [ ] ✓ >90% accuracy on trivial/moderate tasks
+  - [ ] ✓ >80% accuracy on complex tasks
+
+- [ ] **STORY-012-02** — Math & Logic Benchmark (3 pts)
+  - [ ] Create `benches/math_logic/` with arithmetic/logic benchmarks
+  - [ ] Use ExactMatcher (deterministic)
+  - [ ] ✓ Zero errors on arithmetic tasks with k=3
+  - [ ] ✓ Θ(s ln s) scaling holds
+
+- [ ] **STORY-012-03** — Data Analysis Benchmark (2 pts)
+  - [ ] Create `benches/data_analysis/` with CSV/SQL benchmarks
+  - [ ] Use EmbeddingMatcher for approximate matching
+  - [ ] ✓ >85% accuracy on data analysis tasks
+  - [ ] ✓ Numerical outputs within 1% tolerance
+
+- [ ] **STORY-012-04** — Benchmark Dashboard & Reporting (2 pts)
+  - [ ] Create benchmark report generator (JSON + markdown)
+  - [ ] Add weekly CI benchmark run
+  - [ ] ✓ All benchmarks produce structured JSON
+  - [ ] ✓ BENCHMARKS.md auto-generated
+
+### EPIC-013: v0.2.0 Release (7 pts)
+
+- [ ] **STORY-013-01** — Documentation Update (3 pts) ⊘ EPIC-009, EPIC-010, EPIC-011
+  - [ ] Update README with adaptive k, semantic matching, ensemble sections
+  - [ ] Add rustdoc to all new public APIs
+  - [ ] Create coding_task.rs and ensemble_demo.rs examples
+  - [ ] ✓ README covers all v0.2.0 features
+  - [ ] ✓ Doc tests pass
+
+- [ ] **STORY-013-02** — CHANGELOG & Release (2 pts) ⊘ STORY-013-01
+  - [ ] Update CHANGELOG.md for v0.2.0
+  - [ ] Full test suite pass, 95% coverage
+  - [ ] Tag v0.2.0, create GitHub release, publish to crates.io
+  - [ ] ✓ All tests pass
+  - [ ] ✓ GitHub release published
+
+- [ ] **STORY-013-03** — Migration Guide (2 pts) ⊘ STORY-013-01
+  - [ ] Create MIGRATION-v0.2.0.md
+  - [ ] Document all API changes (all backward compatible)
+  - [ ] ✓ v0.1.0 code compiles against v0.2.0 without changes
+  - [ ] ✓ Guide includes code snippets for new features
+
+**Sprint 7 Gate:**
+- [ ] Domain benchmarks pass for coding, math, data analysis
+- [ ] v0.2.0 tagged and released
+- [ ] Documentation complete for all new features
+- [ ] Migration guide validates backward compatibility
+- [ ] 95% test coverage on entire codebase
+
+---
+
+## Final Validation (v0.2.0)
+
+- [ ] Adaptive k reduces cost by 20%+ while maintaining zero errors (deterministic tasks)
+- [ ] Semantic matching >90% accuracy on coding tasks
+- [ ] Ensemble voting improves reliability over single-model
+- [ ] Cost-aware ensemble 30%+ cheaper than single expensive model
+- [ ] Domain benchmarks pass (coding, math, data analysis)
+- [ ] 95% test coverage across all modules
+- [ ] Zero errors on 10-disk Hanoi with all feature combinations
+- [ ] All 4 MCP tools work with new features (backward compatible)
+- [ ] README, API docs, examples updated
+- [ ] CHANGELOG, migration guide complete
+- [ ] CI/CD pipeline green
+- [ ] v0.2.0 published to crates.io
+
+---
+
+## Release Commands (v0.2.0)
 
 ```bash
-# Final checks
+# Full test suite
 cargo test --all-features
 cargo llvm-cov --fail-under-lines 90 --ignore-filename-regex '(main\.rs|maker-mcp\.rs)'
 cargo fmt --check
 cargo clippy -- -D warnings
 cargo doc --no-deps
 
+# Benchmarks
+cargo bench --bench coding_tasks
+cargo bench --bench math_logic
+cargo bench --bench ensemble_comparison
+
 # Dry run publish
 cargo publish --dry-run
 
 # Tag and release
-git tag -a v0.1.0 -m "MAKER Framework v0.1.0 MVP"
-git push origin v0.1.0
+git tag -a v0.2.0 -m "MAKER Framework v0.2.0 — Semantic Matching & Ensemble Voting"
+git push origin v0.2.0
 
 # Publish to crates.io
 cargo publish
@@ -341,6 +317,6 @@ cargo publish
 
 ---
 
-**Runsheet Status:** ✅ COMPLETE
-**Start Date:** 2026-01-30
-**Target Release:** Day 14
+**Runsheet Status:** Sprints 1-5 ✅ COMPLETE | Sprints 6-7 ⏳ PENDING
+**v0.1.0 Released:** 2026-01-30
+**Target v0.2.0:** Week 10

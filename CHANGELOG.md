@@ -6,7 +6,39 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-*No unreleased changes.*
+### Added
+
+#### Adaptive K-Margin (`src/core/adaptive.rs`)
+- **`KEstimator`**: EMA-based p-hat estimation (α=0.1) with live `recommended_k()` using observed success rate
+- **`vote_with_margin_adaptive()`**: Wraps `vote_with_margin` with dynamic k adjustment based on running accuracy estimates
+- **Configurable bounds**: k floor (default 2) and ceiling (default 10) prevent runaway margins
+- **MCP extension**: `maker/configure` accepts `adaptive_k`, `ema_alpha`, `k_bounds`; `maker/vote` response includes `k_used` and `p_hat`
+
+#### Semantic Matching (`src/core/matcher.rs`, `src/core/matchers/`)
+- **`CandidateMatcher` trait**: Pluggable trait for response comparison with `canonicalize()`, `are_equivalent()`, and `similarity_score()` methods
+- **`ExactMatcher`**: Default whitespace-normalized string equality (backward compatible with v0.1.0 behavior)
+- **`EmbeddingMatcher`**: Cosine similarity of embedding vectors with configurable threshold (default 0.92) and internal cache
+- **`EmbeddingClient` trait**: Synchronous interface for embedding providers
+- **`OllamaEmbeddingClient`**: Ollama `/api/embeddings` endpoint integration
+- **`OpenAiEmbeddingClient`**: OpenAI `text-embedding-3-small` integration
+- **`CodeMatcher`** (behind `code-matcher` feature): AST-based code comparison using tree-sitter with alpha-renaming, comment stripping, and LCS-based token similarity; supports Rust, Python, JavaScript
+- **`MatcherConfig` enum**: Serde-tagged configuration for Exact, Embedding, and Code matchers via MCP `maker/configure` tool
+- **`VoteRequest.matcher`**: Per-call matcher override
+- **`VoteResponse.matcher_type`** and **`candidate_groups`**: New response fields showing matcher used and number of distinct candidate groups
+
+#### Testing
+- 21 property-based tests for adaptive k behavior (bounds, convergence, recovery)
+- 25 semantic matching tests covering code corpus accuracy (>95%), NL pairs, false positive rate, reflexivity, and symmetry
+- Total test count: 501 (with `code-matcher` feature), 485 (without)
+
+### Changed
+- `VoteRace` now accepts `Arc<dyn CandidateMatcher>` for pluggable candidate grouping
+- `vote_with_margin()` uses matcher for candidate grouping instead of raw string equality
+- `reqwest` dependency now includes `blocking` feature for synchronous embedding HTTP clients
+- `ServerConfig` extended with `adaptive_k`, `ema_alpha`, `k_bounds`, and `matcher` fields
+
+### Fixed
+- N/A
 
 ## [0.1.0] - 2026-01-30
 
@@ -67,7 +99,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Known Limitations
 - Parallel sampling via async LLM clients not yet integrated into the synchronous voting executor
-- Semantic matching for non-deterministic tasks (e.g., coding) not yet implemented
+- ~~Semantic matching for non-deterministic tasks (e.g., coding) not yet implemented~~ *(resolved in [Unreleased])*
 - MCP tool names use `/` separator (e.g., `maker/vote`) which triggers rmcp naming warnings
 
 ## [0.0.0] - 2026-01-30

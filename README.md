@@ -87,7 +87,14 @@ src/
 │   ├── kmin.rs         # k_min = ⌈ln(1 - t^(m/s)) / ln((1-p)/p)⌉
 │   ├── voting.rs       # VoteRace: first-to-ahead-by-k (thread-safe)
 │   ├── redflag.rs      # RedFlagValidator: discard-don't-repair
-│   ├── executor.rs     # vote_with_margin(): the main integration point
+│   ├── executor.rs     # vote_with_margin() + vote_with_margin_adaptive()
+│   ├── adaptive.rs     # KEstimator: EMA-based dynamic k adjustment
+│   ├── matcher.rs      # CandidateMatcher trait + ExactMatcher
+│   ├── matchers/       # Pluggable matcher implementations
+│   │   ├── embedding.rs        # EmbeddingMatcher (cosine similarity)
+│   │   ├── ollama_embedding.rs # Ollama embedding client
+│   │   ├── openai_embedding.rs # OpenAI embedding client
+│   │   └── code.rs             # CodeMatcher (tree-sitter AST, optional)
 │   └── orchestration.rs# TaskOrchestrator with m=1 constraint
 ├── llm/                # Multi-provider LLM abstraction
 │   ├── ollama.rs       # Local inference
@@ -109,11 +116,14 @@ src/
 
 Request:
 ```json
-{ "prompt": "...", "k_margin": 3, "max_samples": 20 }
+{ "prompt": "...", "k_margin": 3, "max_samples": 20, "matcher": "embedding" }
 ```
 Response:
 ```json
-{ "winner": "answer", "vote_counts": {"answer": 5}, "total_samples": 7 }
+{
+  "winner": "answer", "vote_counts": {"answer": 5}, "total_samples": 7,
+  "k_used": 3, "p_hat": 0.87, "matcher_type": "exact", "candidate_groups": 2
+}
 ```
 
 ### `maker/validate` - Red-Flag Checking
@@ -142,7 +152,11 @@ Response:
 
 Request:
 ```json
-{ "k_default": 3, "temperature_diversity": 0.1, "token_limit": 700 }
+{
+  "k_default": 3, "temperature_diversity": 0.1, "token_limit": 700,
+  "adaptive_k": true, "ema_alpha": 0.1, "k_bounds": [2, 10],
+  "matcher": { "type": "embedding", "threshold": 0.92, "provider": "ollama" }
+}
 ```
 Response:
 ```json
@@ -170,19 +184,65 @@ Naive retry must rerun the entire task on any step failure. With p=0.85, the pro
 
 Run `cargo test --test monte_carlo -- --nocapture` to reproduce these results.
 
+## Adaptive K-Margin
+
+MAKER dynamically adjusts the k-margin based on observed accuracy, reducing API calls when the model is performing well:
+
+```rust
+use maker::core::{KEstimator, vote_with_margin_adaptive, MockLlmClient, VoteConfig};
+
+let client = MockLlmClient::constant("answer");
+let config = VoteConfig::default();
+let mut estimator = KEstimator::new(0.85, 0.95, 100);
+
+// k starts high, decreases as accuracy is confirmed
+let result = vote_with_margin_adaptive("prompt", &client, config, &mut estimator).unwrap();
+println!("Used k={}, estimated p={:.2}", result.k_used, estimator.p_hat());
+```
+
+Configure via MCP: `{"adaptive_k": true, "ema_alpha": 0.1, "k_bounds": [2, 10]}`
+
+## Semantic Matching
+
+For non-deterministic tasks (code generation, natural language), MAKER supports pluggable matchers that group equivalent responses:
+
+| Matcher | Use Case | Method |
+|---------|----------|--------|
+| `ExactMatcher` (default) | Deterministic tasks | Whitespace-normalized string equality |
+| `EmbeddingMatcher` | Natural language | Cosine similarity of embeddings (threshold: 0.92) |
+| `CodeMatcher` | Code generation | Tree-sitter AST comparison with alpha-renaming |
+
+```rust
+use maker::core::matcher::ExactMatcher;
+use maker::core::matchers::embedding::{EmbeddingMatcher, MockEmbeddingClient};
+
+// Embedding matcher groups semantically similar responses
+let matcher = EmbeddingMatcher::new(Box::new(MockEmbeddingClient::default()), 0.92);
+assert!(matcher.are_equivalent("The answer is 42", "The answer is 42."));
+```
+
+The `CodeMatcher` requires the `code-matcher` feature flag:
+
+```bash
+cargo build --features code-matcher
+cargo test --features code-matcher
+```
+
 ## Development
 
 ```bash
-cargo build                      # Build
-cargo test                       # All tests (unit + integration + property)
-cargo test --example hanoi       # Hanoi example tests (21 tests)
-cargo test --test properties     # Property-based tests (proptest)
-cargo test --test mcp_integration # MCP integration tests
-cargo test --test monte_carlo    # Monte Carlo cost validation
-cargo bench --bench cost_scaling # Cost scaling benchmark
-cargo clippy                     # Lint
-cargo fmt --check                # Format check
-cargo doc --no-deps --open       # API documentation
+cargo build                          # Build
+cargo test                           # All tests (unit + integration + property)
+cargo test --features code-matcher   # Include tree-sitter code matcher tests
+cargo test --example hanoi           # Hanoi example tests (21 tests)
+cargo test --test properties         # Property-based tests (proptest, 21 tests)
+cargo test --test mcp_integration    # MCP integration tests (35 tests)
+cargo test --test semantic_matching  # Semantic matching tests (16/25 tests)
+cargo test --test monte_carlo        # Monte Carlo cost validation
+cargo bench --bench cost_scaling     # Cost scaling benchmark
+cargo clippy                         # Lint
+cargo fmt --check                    # Format check
+cargo doc --no-deps --open           # API documentation
 ```
 
 ## Security
