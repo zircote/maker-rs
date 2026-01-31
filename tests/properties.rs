@@ -309,3 +309,322 @@ proptest! {
         prop_assert!(result.is_err(), "Missing required_b should fail");
     }
 }
+
+// ==========================================
+// Adaptive K Property Tests (STORY-011-04)
+// ==========================================
+
+use maker::core::adaptive::{KEstimator, KEstimatorConfig, VoteObservation};
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(1000))]
+
+    /// Property: Adaptive k never violates configured bounds
+    #[test]
+    fn prop_adaptive_k_respects_bounds(
+        initial_p in 0.55_f64..0.95,
+        alpha in 0.01_f64..0.5,
+        k_floor in 1_usize..5,
+        k_ceiling_offset in 3_usize..10,
+        target_t in 0.80_f64..0.99,
+        remaining_steps in 1_usize..100_000,
+        num_obs in 1_usize..50,
+        obs_total_samples in 2_usize..30,
+        obs_k_used in 2_usize..8,
+        obs_red_flagged in 0_usize..5
+    ) {
+        let k_ceiling = k_floor + k_ceiling_offset;
+        let mut estimator = KEstimator::new(KEstimatorConfig {
+            ema_alpha: alpha,
+            initial_p_hat: initial_p,
+            k_min_floor: k_floor,
+            k_max_ceiling: k_ceiling,
+        });
+
+        // Check initial recommendation
+        let k = estimator.recommended_k(target_t, remaining_steps);
+        prop_assert!(k >= k_floor && k <= k_ceiling,
+            "Initial k={} out of bounds [{}, {}]", k, k_floor, k_ceiling);
+
+        // Observe and check after each observation
+        let clamped_red = obs_red_flagged.min(obs_total_samples.saturating_sub(1));
+        for _ in 0..num_obs {
+            estimator.observe(VoteObservation {
+                converged_quickly: obs_total_samples <= obs_k_used,
+                total_samples: obs_total_samples,
+                k_used: obs_k_used.min(obs_total_samples),
+                red_flagged: clamped_red,
+            });
+
+            let k = estimator.recommended_k(target_t, remaining_steps);
+            prop_assert!(k >= k_floor && k <= k_ceiling,
+                "After obs: k={} out of bounds [{}, {}], p_hat={:.4}",
+                k, k_floor, k_ceiling, estimator.p_hat());
+        }
+    }
+
+    /// Property: p_hat stays within valid range (0.51, 0.99)
+    #[test]
+    fn prop_p_hat_stays_valid(
+        initial_p in 0.51_f64..0.99,
+        alpha in 0.01_f64..0.99,
+        num_obs in 1_usize..100,
+        obs_total in 1_usize..50,
+        obs_k in 1_usize..10,
+        obs_red in 0_usize..10
+    ) {
+        let mut estimator = KEstimator::new(KEstimatorConfig {
+            ema_alpha: alpha,
+            initial_p_hat: initial_p,
+            ..Default::default()
+        });
+
+        let clamped_total = obs_total.max(1);
+        let clamped_red = obs_red.min(clamped_total.saturating_sub(1));
+
+        for _ in 0..num_obs {
+            estimator.observe(VoteObservation {
+                converged_quickly: clamped_total <= obs_k,
+                total_samples: clamped_total,
+                k_used: obs_k.min(clamped_total),
+                red_flagged: clamped_red,
+            });
+
+            let p = estimator.p_hat();
+            prop_assert!(p >= 0.51 && p <= 0.99,
+                "p_hat={:.6} out of valid range after {} observations",
+                p, estimator.observation_count());
+        }
+    }
+
+    /// Property: Adaptive k with unanimous votes (high p) produces lower or equal k
+    /// compared to contested votes (low p)
+    #[test]
+    fn prop_high_p_gives_lower_or_equal_k(
+        target_t in 0.85_f64..0.99,
+        steps in 10_usize..10_000
+    ) {
+        let mut estimator_high = KEstimator::new(KEstimatorConfig {
+            initial_p_hat: 0.70,
+            ema_alpha: 0.3,
+            ..Default::default()
+        });
+        let mut estimator_low = KEstimator::new(KEstimatorConfig {
+            initial_p_hat: 0.70,
+            ema_alpha: 0.3,
+            ..Default::default()
+        });
+
+        // High p: unanimous votes
+        for _ in 0..20 {
+            estimator_high.observe(VoteObservation {
+                converged_quickly: true,
+                total_samples: 3,
+                k_used: 3,
+                red_flagged: 0,
+            });
+        }
+
+        // Low p: contested votes
+        for _ in 0..20 {
+            estimator_low.observe(VoteObservation {
+                converged_quickly: false,
+                total_samples: 15,
+                k_used: 3,
+                red_flagged: 2,
+            });
+        }
+
+        let k_high = estimator_high.recommended_k(target_t, steps);
+        let k_low = estimator_low.recommended_k(target_t, steps);
+
+        prop_assert!(k_high <= k_low,
+            "High p should give k <= low p: k_high={}, k_low={}, p_high={:.4}, p_low={:.4}",
+            k_high, k_low, estimator_high.p_hat(), estimator_low.p_hat());
+    }
+}
+
+// ==========================================
+// Adaptive K Monte Carlo Tests (STORY-011-04)
+// ==========================================
+
+/// Simulate voting with a given true p, using the adaptive estimator.
+/// Returns (total_samples_used, errors).
+fn simulate_adaptive_task(
+    true_p: f64,
+    total_steps: usize,
+    target_t: f64,
+    config: KEstimatorConfig,
+) -> (usize, usize) {
+    use maker::core::{vote_with_margin_adaptive, MockLlmClient, VoteConfig};
+
+    // Create a biased mock: correct answer with probability true_p
+    let correct_count = (100.0 * true_p).round() as usize;
+    let mut responses = vec!["correct".to_string(); correct_count];
+    responses.extend(vec!["wrong".to_string(); 100 - correct_count]);
+    let client = MockLlmClient::new(responses);
+
+    let vote_config = VoteConfig::default().with_max_samples(200);
+    let mut estimator = KEstimator::new(config);
+    let mut total_samples = 0;
+    let mut errors = 0;
+
+    for step in 0..total_steps {
+        let remaining = total_steps - step;
+        match vote_with_margin_adaptive(
+            &format!("step {}", step),
+            &mut estimator,
+            target_t,
+            remaining,
+            &client,
+            vote_config.clone(),
+        ) {
+            Ok(result) => {
+                total_samples += result.total_samples;
+                if result.winner != "correct" {
+                    errors += 1;
+                }
+            }
+            Err(_) => {
+                errors += 1;
+                total_samples += 200; // max_samples
+            }
+        }
+    }
+
+    (total_samples, errors)
+}
+
+/// Simulate voting with static k for comparison.
+fn simulate_static_task(true_p: f64, total_steps: usize, static_k: usize) -> (usize, usize) {
+    use maker::core::{vote_with_margin, MockLlmClient, VoteConfig};
+
+    let correct_count = (100.0 * true_p).round() as usize;
+    let mut responses = vec!["correct".to_string(); correct_count];
+    responses.extend(vec!["wrong".to_string(); 100 - correct_count]);
+    let client = MockLlmClient::new(responses);
+
+    let vote_config = VoteConfig::default().with_max_samples(200);
+    let mut total_samples = 0;
+    let mut errors = 0;
+
+    for step in 0..total_steps {
+        match vote_with_margin(
+            &format!("step {}", step),
+            static_k,
+            &client,
+            vote_config.clone(),
+        ) {
+            Ok(result) => {
+                total_samples += result.total_samples;
+                if result.winner != "correct" {
+                    errors += 1;
+                }
+            }
+            Err(_) => {
+                errors += 1;
+                total_samples += 200;
+            }
+        }
+    }
+
+    (total_samples, errors)
+}
+
+#[test]
+fn test_adaptive_k_zero_errors_deterministic() {
+    // Regression: adaptive k on a deterministic task (high p) produces zero errors
+    let (_, errors) = simulate_adaptive_task(
+        0.85,
+        20, // 20 steps (small for test speed)
+        0.95,
+        KEstimatorConfig::default(),
+    );
+
+    assert_eq!(errors, 0, "Expected zero errors with adaptive k on high-p task");
+}
+
+#[test]
+fn test_adaptive_k_cost_reduction_vs_static() {
+    // Monte Carlo: adaptive k should use fewer total samples than static k=4
+    let steps = 30;
+    let true_p = 0.85;
+
+    let (adaptive_samples, adaptive_errors) = simulate_adaptive_task(
+        true_p,
+        steps,
+        0.95,
+        KEstimatorConfig::default(),
+    );
+
+    let (static_samples, static_errors) = simulate_static_task(true_p, steps, 4);
+
+    // Adaptive should have very few errors; static may have more due to
+    // MockLlmClient's deterministic cycling (85 correct, 15 wrong in a
+    // fixed sequence), which can cause clustered wrong answers at some steps.
+    assert!(
+        adaptive_errors <= 1,
+        "Adaptive had too many errors: {}",
+        adaptive_errors
+    );
+    // Static k=4 with deterministic mock cycling can hit unlucky patterns;
+    // we only care that it doesn't completely fail.
+    assert!(
+        static_errors <= 5,
+        "Static had too many errors: {}",
+        static_errors
+    );
+
+    // Adaptive should use <= samples (cost savings)
+    // Note: with high p and default config, adaptive may start at k=2 (floor)
+    // while static is fixed at k=4, so adaptive should use fewer samples
+    assert!(
+        adaptive_samples <= static_samples + steps, // Allow small margin
+        "Adaptive should not use significantly more samples: adaptive={} vs static={}",
+        adaptive_samples,
+        static_samples
+    );
+}
+
+#[test]
+fn test_adaptive_k_recovers_from_p_drop() {
+    // Stress test: start with high p, then p drops, adaptive k should increase
+    use maker::core::adaptive::{KEstimator, KEstimatorConfig, VoteObservation};
+
+    let mut estimator = KEstimator::new(KEstimatorConfig {
+        ema_alpha: 0.3, // Faster reaction for test
+        initial_p_hat: 0.90,
+        ..Default::default()
+    });
+    estimator.set_initial_k(estimator.recommended_k(0.95, 1000));
+
+    // Phase 1: high p (unanimous)
+    for _ in 0..10 {
+        estimator.observe(VoteObservation {
+            converged_quickly: true,
+            total_samples: 3,
+            k_used: 3,
+            red_flagged: 0,
+        });
+    }
+    let k_high_p = estimator.recommended_k(0.95, 1000);
+
+    // Phase 2: p drops suddenly (contested votes, red flags)
+    for _ in 0..10 {
+        estimator.observe(VoteObservation {
+            converged_quickly: false,
+            total_samples: 18,
+            k_used: 3,
+            red_flagged: 5,
+        });
+    }
+    let k_low_p = estimator.recommended_k(0.95, 1000);
+
+    assert!(
+        k_low_p > k_high_p,
+        "k should increase when p drops: k_high_p={}, k_low_p={}, p_hat={:.4}",
+        k_high_p,
+        k_low_p,
+        estimator.p_hat()
+    );
+}

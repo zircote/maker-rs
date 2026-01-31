@@ -36,6 +36,7 @@ fn test_server_custom_config() {
         token_limit: 1000,
         provider: "anthropic".to_string(),
         max_prompt_length: 5000,
+        ..Default::default()
     };
 
     let server = MakerServer::with_config(config.clone());
@@ -116,6 +117,8 @@ fn test_vote_request_validation_k_margin_zero() {
         max_samples: None,
         temperature_diversity: None,
         provider: None,
+        adaptive: None,
+        matcher: None,
     };
 
     assert!(request.validate().is_err());
@@ -129,6 +132,8 @@ fn test_vote_request_validation_empty_prompt() {
         max_samples: None,
         temperature_diversity: None,
         provider: None,
+        adaptive: None,
+        matcher: None,
     };
 
     assert!(request.validate().is_err());
@@ -142,6 +147,8 @@ fn test_vote_request_validation_prompt_too_long() {
         max_samples: None,
         temperature_diversity: None,
         provider: None,
+        adaptive: None,
+        matcher: None,
     };
 
     assert!(request.validate().is_err());
@@ -161,6 +168,10 @@ fn test_vote_response_schema() {
         cost_tokens: 1500,
         cost_usd: 0.0015,
         latency_ms: 2500,
+        k_used: 3,
+        p_hat: None,
+        matcher_type: "exact".to_string(),
+        candidate_groups: 2,
     };
 
     let json = serde_json::to_string(&response).unwrap();
@@ -168,6 +179,8 @@ fn test_vote_response_schema() {
 
     assert_eq!(parsed.winner, "answer_a");
     assert_eq!(parsed.total_samples, 7);
+    assert_eq!(parsed.matcher_type, "exact");
+    assert_eq!(parsed.candidate_groups, 2);
 }
 
 // ============================================
@@ -362,6 +375,8 @@ fn test_configure_response_schema() {
             temperature_diversity: 0.2,
             token_limit: 1000,
             provider: "openai".to_string(),
+            adaptive_k: false,
+            matcher: maker::mcp::tools::configure::MatcherConfig::default(),
         },
     };
 
@@ -443,6 +458,8 @@ fn test_vote_tool_execution_with_mock() {
         max_samples: Some(50),
         temperature_diversity: None,
         provider: None,
+        adaptive: None,
+        matcher: None,
     };
 
     let result = execute_vote(&request, 100, 0.1, Some(700));
@@ -526,6 +543,7 @@ fn test_configure_tool_execution() {
         temperature_diversity: Some(0.2),
         token_limit: Some(1000),
         provider: Some("openai".to_string()),
+        ..Default::default()
     };
 
     let applied = apply_config_updates(&mut config, &request);
