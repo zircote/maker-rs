@@ -1,0 +1,116 @@
+System Design Specification: High-Reliability Agentic Architecture (MAKER Framework)
+
+1. Architectural Philosophy: From Monolithic Reasoning to Massively Decomposed Processes (MDAPs)
+
+Single-agent architectures encounter an inescapable "reasoning cliff": performance decays exponentially as task horizons extend. For long-horizon tasks requiring thousands or millions of steps, monolithic Large Language Models (LLMs) are statistically guaranteed to fail due to a persistent, non-zero per-step error rate. Massively Decomposed Agentic Processes (MDAPs) transform these brittle reasoning chains into deterministic, machine-like functions by atomizing tasks into the smallest possible execution units.
+
+The core limitations of monolithic systems in long-horizon tasks are defined by:
+
+* Exponential Decay of Success: Probability of success (p^s) vanishes as the number of dependent steps (s) increases. A 1% error rate ensures failure after a few hundred steps.
+* Contextual Satiation: Auto-regressive models become increasingly burdened by the historical context of their own tokens, leading to unreliability and "irrelevant context confusion."
+* Entangled Failures: In monolithic outputs, planning errors are inseparable from execution errors, leading to total system collapse from a single hallucination.
+
+The Multi-Agent Advantage serves as an orthogonal scaling direction to base model intelligence. Rather than attempting to "reason" through a million-step problem, the MDAP framework scales reliability through modularity. By distributing the load across micro-agents and applying subtask-level error correction, we achieve zero-error performance at scales previously deemed impossible. This framework has successfully executed a 1,048,575-step sequence in the Towers of Hanoi domain with zero errors, demonstrating that reliability is an architectural property, not just a model capability.
+
+2. The Micro-Role Protocol: Implementing the m=1 Rule
+
+The MAKER framework (Maximal Agentic decomposition, first-to-ahead-by-k Error correction, and Red-flagging) rests on an engineering mandate: agents must be treated as mechanical functions, not reasoned thinkers. Reducing an agent's scope to a single, atomic operation minimizes cognitive load and maximizes the success probability (p) of individual samples.
+
+The m=1 Rule requires that every subtask be decomposed until it represents exactly one logical or physical operation.
+
+* Signatures: Agents should define only the interface or function signature, never the implementation logic simultaneously.
+* Logic Lines: Execution roles must be restricted to writing the next discrete line of logic or adding a single structural element (e.g., a closing brace).
+
+Feature	Persona-Based Roles (e.g., Senior Engineer)	Granular Micro-Roles (e.g., Write Next Line)
+Cognitive Load	High; manages strategy, syntax, and state.	Minimal; executes one deterministic operation.
+Error Isolation	Poor; hallucinations corrupt large outputs.	Absolute; errors are isolated and caught by voting.
+Contextual Focus	Diffuse; prone to history confusion.	Laser-focused; restricted to immediate prerequisites.
+Economic Profile	High-cost reasoning models required.	Low-cost models (e.g., GPT-4.1-mini) suffice.
+
+Extreme granularity is only effective when paired with strict isolation, ensuring the agent is shielded from the noise of the broader system.
+
+3. Context Shielding and the Templating Function (\phi)
+
+Strategic reliability requires rigorous context shielding to prevent the "lost in the middle" phenomenon. In long-running processes, agents must be provided with the minimal subset of information required to execute their specific m=1 step.
+
+The Templating Function (\phi) maps the global system state (x_i) into a specialized prompt. This function distills x_i into a context-limited view containing only the immediate prerequisites for the current step.
+
+Required context-limitation standards:
+
+1. Strict State Isolation: For a task on line n, the function must only provide lines n-k through n-1. Access to the full file or history is prohibited.
+2. Directory Masking: Agents must not see the full project tree unless the specific atomic task is directory-level management.
+3. Static Strategy Injection: The high-level objective is provided as a fixed reference, preventing the agent from needing to re-derive the plan from historical context.
+
+Shielding the input ensures the agent operates on clean data; however, the system also requires a rigid output contract to maintain state integrity.
+
+4. Input/Output Contracts and State Passing
+
+Determinism is achieved through rigid I/O contracts. Agents do not produce "responses"; they produce formal state transitions. In the MAKER framework, an agent must output the Next State (x_{i+1}) rather than mere text or suggested actions.
+
+A MAKER-compliant output contract requires:
+
+* Action: A specific, parsable description of the operation performed (e.g., a move or a code edit).
+* Next State: The resulting system state (e.g., updated file content or an Abstract Syntax Tree (AST)).
+
+This "State Passing" mechanism is the prerequisite for scaling to million-step tasks. By forcing each micro-agent to generate the resulting state, the system provides the next agent in the sequence with a complete "snapshot" of the environment. This prevents error accumulation over massive timescales and provides the structural hooks necessary for automated validation.
+
+5. Error Correction: First-to-Ahead-by-k Voting
+
+Semantic consistency—the content most consistently sampled—is a more reliable metric for truth in linguistic computing than greedy decoding. High-reliability engineering replaces "intelligent" single samples with the statistical power of the "First-to-ahead-by-k" voting algorithm.
+
+Algorithm Specifications:
+
+* The Parameter k: k represents the required victory margin. A candidate is accepted only when it leads the second-best candidate by k votes.
+* Scaling Law: To maintain a target success probability t, the margin k must grow logarithmically with the number of steps (s): k_{\min} = \lceil \frac{\ln(t^{-m/s}-1)}{\ln(\frac{1-p}{p})} \rceil = \Theta(\ln s).
+* Gambler's Ruin: This algorithm solves the "Gambler’s Ruin" problem by ensuring that the selected action is a statistically significant winner, even for tasks with 10^6 steps.
+
+Voting Requirements:
+
+* Independent Sampling: Each vote must originate from an independent API call to ensure error decorrelation.
+* Temperature (\tau): A non-zero temperature (\tau = 0.1 is optimal for GPT-4.1-mini) is required to explore the distribution and prevent the system from getting stuck in correlated logical traps.
+* Exact Matches: For execution tasks, candidate selection requires exact string or structural identity between votes.
+
+6. Red-Flagging Protocols for Integrity Monitoring
+
+Red-flagging is a proactive mechanism to discard samples indicating pathological behavior or logical loops. The primary objective is not merely to increase the success rate p, but to decorrelate errors and prevent "collisions" where multiple votes share the same failure mode.
+
+Red-Flag Triggers:
+
+1. Token Thresholds: Any atomic response exceeding a specific threshold (e.g., 750 tokens) is automatically discarded. Excessive verbosity is a primary indicator of circular reasoning.
+2. Format Violations: Responses that fail to adhere to JSON or CFG schemas are red-flagged. Structural confusion is highly correlated with underlying reasoning failure.
+
+The Red-Flagging Parser must use Regular Expressions or rigid schema validation to discard responses immediately. Never attempt to "repair" a malformed response. Discarding and resampling is computationally cheaper than allowing a corrupted reasoning state to enter the voting pool.
+
+7. Recursive Architecture: Separating Insight from Execution
+
+High-reliability systems must separate "Insight Agents" (strategy and planning) from "Solver Agents" (execution). This separation prevents entangled failures where a flawed plan compromises an otherwise capable executor.
+
+The automated decomposition pipeline utilizes four roles:
+
+1. Decomposition Agents: Split tasks into two simpler subtasks and a composition function.
+2. Decomposition Discriminators: Vote on the proposed decomposition strategy.
+3. Problem Solver Agents: Execute atomic (m=1) leaf nodes.
+4. Solution Discriminators: Aggregate results into a final "Attention Tree" structure.
+
+The Recursive Loop follows this protocol:
+
+* Step 1: High-level command received.
+* Step 2: Decomposition Agents propose a task split.
+* Step 3: Discriminators apply k-voting to the plan itself.
+* Step 4: Recursion continues until all leaf nodes satisfy the m=1 condition.
+* Step 5: Atomic execution by Solver Agents.
+* Step 6: Solution Discriminators reassemble the state transitions into the final output.
+
+8. Economic Analysis and Scaling Laws
+
+The MDAP framework allows million-step tasks to become economically feasible by optimizing the cost/reliability ratio (c/p). The expected cost of a MAKER-solved task is defined by: \Theta(p^{-m} s \ln s)
+
+This formula demonstrates why m=1 is a requirement: cost grows exponentially as the number of steps per subtask (m) increases. By enforcing maximal decomposition, the system achieves log-linear scaling (\Theta(s \ln s)) relative to task length.
+
+Procurement Standards for MAKER Implementations:
+
+1. Prioritize p over General Intelligence: Model selection should be based on the "Single-Step Success Rate" for atomic tasks.
+2. Optimal Model Selection: Empirical data identifies GPT-4.1-mini (at \tau=0.1) as the most cost-effective choice for execution roles, providing a superior c/p ratio even compared to larger reasoning models like o3-mini.
+3. Parallelization of Time: While k increases total API calls, these are executed in parallel. The time cost of the system scales only linearly with s.
+
+The future of AI superintelligence does not lie in monolithic scaling, but in the "smashing of intelligence into a million pieces"—creating massively decomposed processes that are inherently safe, verifiable, and capable of executing the world's most complex, zero-error tasks. #
