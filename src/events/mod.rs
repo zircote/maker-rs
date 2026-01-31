@@ -122,6 +122,93 @@ pub enum MakerEvent {
         #[serde(with = "system_time_serde")]
         timestamp: SystemTime,
     },
+
+    /// A decomposition proposal was generated (v0.3.0)
+    DecompositionProposed {
+        /// Proposal identifier
+        proposal_id: String,
+        /// Source task being decomposed
+        source_task_id: String,
+        /// Number of subtasks in the proposal
+        subtask_count: usize,
+        /// Composition function type
+        composition_fn: String,
+        /// Current recursion depth
+        depth: usize,
+        /// When the proposal was generated
+        #[serde(with = "system_time_serde")]
+        timestamp: SystemTime,
+    },
+
+    /// A decomposition was accepted after voting (v0.3.0)
+    DecompositionAccepted {
+        /// Proposal identifier that was accepted
+        proposal_id: String,
+        /// Source task that was decomposed
+        source_task_id: String,
+        /// Total votes cast
+        total_votes: usize,
+        /// k-margin used for voting
+        k_margin: usize,
+        /// When the decision was made
+        #[serde(with = "system_time_serde")]
+        timestamp: SystemTime,
+    },
+
+    /// A decomposition was rejected (v0.3.0)
+    DecompositionRejected {
+        /// Proposal identifier that was rejected
+        proposal_id: String,
+        /// Reason for rejection
+        reason: String,
+        /// When the rejection occurred
+        #[serde(with = "system_time_serde")]
+        timestamp: SystemTime,
+    },
+
+    /// A subtask execution started (v0.3.0)
+    SubtaskStarted {
+        /// Task identifier
+        task_id: String,
+        /// Parent task identifier (if any)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        parent_id: Option<String>,
+        /// When execution started
+        #[serde(with = "system_time_serde")]
+        timestamp: SystemTime,
+    },
+
+    /// A subtask execution completed (v0.3.0)
+    SubtaskCompleted {
+        /// Task identifier
+        task_id: String,
+        /// Whether execution succeeded
+        success: bool,
+        /// Execution time in milliseconds
+        elapsed_ms: u64,
+        /// When execution completed
+        #[serde(with = "system_time_serde")]
+        timestamp: SystemTime,
+    },
+
+    /// A solution was composed from subtask results (v0.3.0)
+    SolutionComposed {
+        /// Proposal that was executed
+        proposal_id: String,
+        /// Composition function used
+        composition_fn: String,
+        /// Number of successful subtasks
+        success_count: usize,
+        /// Total number of subtasks
+        total_subtasks: usize,
+        /// Total execution time in milliseconds
+        total_elapsed_ms: u64,
+        /// Current recursion depth
+        depth: usize,
+        /// When composition completed
+        #[serde(with = "system_time_serde")]
+        timestamp: SystemTime,
+    },
 }
 
 impl MakerEvent {
@@ -205,6 +292,88 @@ impl MakerEvent {
         }
     }
 
+    /// Create a DecompositionProposed event
+    pub fn decomposition_proposed(
+        proposal_id: &str,
+        source_task_id: &str,
+        subtask_count: usize,
+        composition_fn: &str,
+        depth: usize,
+    ) -> Self {
+        Self::DecompositionProposed {
+            proposal_id: proposal_id.to_string(),
+            source_task_id: source_task_id.to_string(),
+            subtask_count,
+            composition_fn: composition_fn.to_string(),
+            depth,
+            timestamp: SystemTime::now(),
+        }
+    }
+
+    /// Create a DecompositionAccepted event
+    pub fn decomposition_accepted(
+        proposal_id: &str,
+        source_task_id: &str,
+        total_votes: usize,
+        k_margin: usize,
+    ) -> Self {
+        Self::DecompositionAccepted {
+            proposal_id: proposal_id.to_string(),
+            source_task_id: source_task_id.to_string(),
+            total_votes,
+            k_margin,
+            timestamp: SystemTime::now(),
+        }
+    }
+
+    /// Create a DecompositionRejected event
+    pub fn decomposition_rejected(proposal_id: &str, reason: &str) -> Self {
+        Self::DecompositionRejected {
+            proposal_id: proposal_id.to_string(),
+            reason: reason.to_string(),
+            timestamp: SystemTime::now(),
+        }
+    }
+
+    /// Create a SubtaskStarted event
+    pub fn subtask_started(task_id: &str, parent_id: Option<&str>) -> Self {
+        Self::SubtaskStarted {
+            task_id: task_id.to_string(),
+            parent_id: parent_id.map(|s| s.to_string()),
+            timestamp: SystemTime::now(),
+        }
+    }
+
+    /// Create a SubtaskCompleted event
+    pub fn subtask_completed(task_id: &str, success: bool, elapsed_ms: u64) -> Self {
+        Self::SubtaskCompleted {
+            task_id: task_id.to_string(),
+            success,
+            elapsed_ms,
+            timestamp: SystemTime::now(),
+        }
+    }
+
+    /// Create a SolutionComposed event
+    pub fn solution_composed(
+        proposal_id: &str,
+        composition_fn: &str,
+        success_count: usize,
+        total_subtasks: usize,
+        total_elapsed_ms: u64,
+        depth: usize,
+    ) -> Self {
+        Self::SolutionComposed {
+            proposal_id: proposal_id.to_string(),
+            composition_fn: composition_fn.to_string(),
+            success_count,
+            total_subtasks,
+            total_elapsed_ms,
+            depth,
+            timestamp: SystemTime::now(),
+        }
+    }
+
     /// Get the event type name
     pub fn event_type(&self) -> &'static str {
         match self {
@@ -215,6 +384,12 @@ impl MakerEvent {
             Self::VoteDecided { .. } => "VoteDecided",
             Self::EscalationTriggered { .. } => "EscalationTriggered",
             Self::StepCompleted { .. } => "StepCompleted",
+            Self::DecompositionProposed { .. } => "DecompositionProposed",
+            Self::DecompositionAccepted { .. } => "DecompositionAccepted",
+            Self::DecompositionRejected { .. } => "DecompositionRejected",
+            Self::SubtaskStarted { .. } => "SubtaskStarted",
+            Self::SubtaskCompleted { .. } => "SubtaskCompleted",
+            Self::SolutionComposed { .. } => "SolutionComposed",
         }
     }
 
@@ -227,7 +402,13 @@ impl MakerEvent {
             | Self::VoteCast { timestamp, .. }
             | Self::VoteDecided { timestamp, .. }
             | Self::EscalationTriggered { timestamp, .. }
-            | Self::StepCompleted { timestamp, .. } => *timestamp,
+            | Self::StepCompleted { timestamp, .. }
+            | Self::DecompositionProposed { timestamp, .. }
+            | Self::DecompositionAccepted { timestamp, .. }
+            | Self::DecompositionRejected { timestamp, .. }
+            | Self::SubtaskStarted { timestamp, .. }
+            | Self::SubtaskCompleted { timestamp, .. }
+            | Self::SolutionComposed { timestamp, .. } => *timestamp,
         }
     }
 }

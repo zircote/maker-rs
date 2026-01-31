@@ -287,6 +287,23 @@ impl MetricsObserver {
             } => {
                 metrics.record_step_cost(*cumulative_cost);
             }
+
+            // Decomposition events (v0.3.0) - informational for now
+            MakerEvent::DecompositionProposed { .. }
+            | MakerEvent::DecompositionAccepted { .. }
+            | MakerEvent::DecompositionRejected { .. } => {
+                // Future: add decomposition-specific metrics
+            }
+
+            // Subtask events (v0.3.0) - informational for now
+            MakerEvent::SubtaskStarted { .. } | MakerEvent::SubtaskCompleted { .. } => {
+                // Future: add subtask execution metrics
+            }
+
+            // Solution composition events (v0.3.0) - informational for now
+            MakerEvent::SolutionComposed { .. } => {
+                // Future: add composition metrics (success rate, depth distribution)
+            }
         }
     }
 }

@@ -156,6 +156,103 @@ impl LoggingObserver {
                     "Step completed"
                 );
             }
+
+            MakerEvent::DecompositionProposed {
+                proposal_id,
+                source_task_id,
+                subtask_count,
+                composition_fn,
+                depth,
+                ..
+            } => {
+                debug!(
+                    proposal_id = %proposal_id,
+                    source_task = %source_task_id,
+                    subtasks = subtask_count,
+                    composition = %composition_fn,
+                    depth = depth,
+                    "Decomposition proposed"
+                );
+            }
+
+            MakerEvent::DecompositionAccepted {
+                proposal_id,
+                source_task_id,
+                total_votes,
+                k_margin,
+                ..
+            } => {
+                info!(
+                    proposal_id = %proposal_id,
+                    source_task = %source_task_id,
+                    total_votes = total_votes,
+                    k_margin = k_margin,
+                    "Decomposition accepted"
+                );
+            }
+
+            MakerEvent::DecompositionRejected {
+                proposal_id,
+                reason,
+                ..
+            } => {
+                warn!(
+                    proposal_id = %proposal_id,
+                    reason = %reason,
+                    "Decomposition rejected"
+                );
+            }
+
+            MakerEvent::SubtaskStarted {
+                task_id, parent_id, ..
+            } => {
+                debug!(
+                    task_id = %task_id,
+                    parent_id = ?parent_id,
+                    "Subtask started"
+                );
+            }
+
+            MakerEvent::SubtaskCompleted {
+                task_id,
+                success,
+                elapsed_ms,
+                ..
+            } => {
+                if *success {
+                    info!(
+                        task_id = %task_id,
+                        elapsed_ms = elapsed_ms,
+                        "Subtask completed successfully"
+                    );
+                } else {
+                    warn!(
+                        task_id = %task_id,
+                        elapsed_ms = elapsed_ms,
+                        "Subtask failed"
+                    );
+                }
+            }
+
+            MakerEvent::SolutionComposed {
+                proposal_id,
+                composition_fn,
+                success_count,
+                total_subtasks,
+                total_elapsed_ms,
+                depth,
+                ..
+            } => {
+                info!(
+                    proposal_id = %proposal_id,
+                    composition = %composition_fn,
+                    success_count = success_count,
+                    total_subtasks = total_subtasks,
+                    elapsed_ms = total_elapsed_ms,
+                    depth = depth,
+                    "Solution composed"
+                );
+            }
         }
     }
 }
