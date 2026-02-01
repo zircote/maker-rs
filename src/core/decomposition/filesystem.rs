@@ -989,9 +989,8 @@ mod tests {
     #[test]
     fn test_lock_conflict() {
         let state1 = FileSystemState::with_holder_id("holder1");
-        let state2 = FileSystemState::with_holder_id("holder2");
 
-        // Share the same locks map
+        // Create state2 sharing the same files, locks, and dependencies maps
         let state2 = FileSystemState {
             files: state1.files.clone(),
             locks: state1.locks.clone(),

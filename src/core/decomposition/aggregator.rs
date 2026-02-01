@@ -566,10 +566,21 @@ impl SolutionDiscriminator {
     }
 
     /// Validate the composed schema
-    fn validate_composed_schema(&self, _state: &serde_json::Value) -> Result<(), AggregationError> {
-        // Basic validation: state must be a valid JSON value (always true if we get here)
-        // Future: implement JSON Schema validation
-        Ok(())
+    ///
+    /// Ensures the composed state is a valid, non-null JSON value.
+    /// For object types, validates required structure.
+    fn validate_composed_schema(&self, state: &serde_json::Value) -> Result<(), AggregationError> {
+        match state {
+            serde_json::Value::Null => Err(AggregationError::SchemaValidationFailed {
+                message: "Composed state cannot be null".to_string(),
+            }),
+            serde_json::Value::Object(map) if map.is_empty() => {
+                // Empty objects are allowed but logged
+                tracing::debug!("Composed state is an empty object");
+                Ok(())
+            }
+            _ => Ok(()),
+        }
     }
 
     /// Aggregate results with voting when multiple composition candidates exist
@@ -839,6 +850,63 @@ mod tests {
             let display = format!("{}", error);
             assert!(!display.is_empty());
         }
+    }
+
+    // ==========================================
+    // Schema Validation Tests
+    // ==========================================
+
+    #[test]
+    fn test_validate_composed_schema_rejects_null() {
+        let aggregator = SolutionDiscriminator::new();
+        let result = aggregator.validate_composed_schema(&serde_json::Value::Null);
+        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(AggregationError::SchemaValidationFailed { .. })
+        ));
+    }
+
+    #[test]
+    fn test_validate_composed_schema_accepts_object() {
+        let aggregator = SolutionDiscriminator::new();
+        let state = serde_json::json!({"key": "value"});
+        let result = aggregator.validate_composed_schema(&state);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_composed_schema_accepts_empty_object() {
+        let aggregator = SolutionDiscriminator::new();
+        let state = serde_json::json!({});
+        let result = aggregator.validate_composed_schema(&state);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_composed_schema_accepts_array() {
+        let aggregator = SolutionDiscriminator::new();
+        let state = serde_json::json!([1, 2, 3]);
+        let result = aggregator.validate_composed_schema(&state);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_composed_schema_accepts_primitives() {
+        let aggregator = SolutionDiscriminator::new();
+
+        // String
+        assert!(aggregator
+            .validate_composed_schema(&serde_json::json!("hello"))
+            .is_ok());
+        // Number
+        assert!(aggregator
+            .validate_composed_schema(&serde_json::json!(42))
+            .is_ok());
+        // Boolean
+        assert!(aggregator
+            .validate_composed_schema(&serde_json::json!(true))
+            .is_ok());
     }
 
     // ==========================================

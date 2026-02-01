@@ -2,7 +2,8 @@
 //!
 //! Execute SPRT voting on a prompt to get the voted winner with confidence metrics.
 
-use crate::core::{vote_with_margin, MockLlmClient, VoteConfig};
+use crate::core::{vote_with_margin, VoteConfig};
+use crate::llm::adapter::{create_provider, ProviderConfig};
 use crate::llm::ensemble::EnsembleMetrics;
 use rmcp::schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
@@ -228,12 +229,25 @@ pub fn execute_vote(
         ..config
     };
 
-    // For MVP, use mock client - real provider integration in STORY-003-02+
-    // TODO: Replace with actual LLM client based on request.provider
-    let client = MockLlmClient::constant("mock_response");
+    // Create provider based on request (defaults to ollama)
+    let provider_name = request.provider.as_deref().unwrap_or("ollama");
+    let provider_config = ProviderConfig::default();
 
-    let result = vote_with_margin(&request.prompt, request.k_margin, &client, config).map_err(
-        |e| match e {
+    let client: Box<dyn crate::core::executor::LlmClient> =
+        match create_provider(provider_name, Some(provider_config)) {
+            Ok(Some(client)) => client,
+            Ok(None) => {
+                return Err(VoteToolError::ProviderError {
+                    message: format!("Unknown provider: {}", provider_name),
+                });
+            }
+            Err(e) => {
+                return Err(VoteToolError::ProviderError { message: e });
+            }
+        };
+
+    let result = vote_with_margin(&request.prompt, request.k_margin, client.as_ref(), config)
+        .map_err(|e| match e {
             crate::core::ExecutorVoteError::NoConvergence {
                 samples_collected, ..
             } => VoteToolError::NoConvergence {
@@ -253,8 +267,7 @@ pub fn execute_vote(
             crate::core::ExecutorVoteError::InvalidConfig { message } => {
                 VoteToolError::ProviderError { message }
             }
-        },
-    )?;
+        })?;
 
     let candidate_groups = result.vote_counts.len();
 
@@ -383,7 +396,8 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_vote_with_mock() {
+    #[ignore] // Requires running Ollama instance
+    fn test_execute_vote_with_ollama() {
         let request = VoteRequest {
             prompt: "What is 2+2?".to_string(),
             k_margin: 3,
@@ -438,20 +452,21 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_vote_with_custom_params() {
+    fn test_execute_vote_unknown_provider_returns_error() {
         let request = VoteRequest {
             prompt: "What is 2+2?".to_string(),
             k_margin: 2,
             max_samples: Some(100),
             temperature_diversity: Some(0.2),
-            provider: Some("mock".to_string()),
+            provider: Some("unknown-provider".to_string()),
             adaptive: None,
             matcher: None,
             ensemble: None,
         };
 
         let result = execute_vote(&request, 50, 0.1, None);
-        assert!(result.is_ok());
+        assert!(result.is_err());
+        assert!(matches!(result, Err(VoteToolError::ProviderError { .. })));
     }
 
     #[test]

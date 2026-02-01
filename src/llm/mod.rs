@@ -9,12 +9,15 @@
 //! vote_with_margin() → LlmClient trait → [OllamaClient, OpenAiClient, AnthropicClient]
 //! ```
 
+pub mod adapter;
 pub mod anthropic;
 pub mod ensemble;
 pub mod ollama;
 pub mod openai;
 pub mod retry;
 pub mod sampler;
+
+pub use adapter::{create_provider, BlockingLlmAdapter, ProviderConfig};
 
 use std::future::Future;
 use std::pin::Pin;

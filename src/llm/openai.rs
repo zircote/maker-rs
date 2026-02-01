@@ -89,9 +89,19 @@ impl OpenAiClient {
         self
     }
 
-    /// Get cost based on model name (USD per 1K tokens as of 2024)
+    /// Get cost based on model name (USD per 1K tokens)
     fn model_cost(model: &str) -> TokenCost {
         match model {
+            // GPT-5 family (estimated pricing)
+            m if m.starts_with("gpt-5-nano") => TokenCost::new(0.0001, 0.0004),
+            m if m.starts_with("gpt-5-mini") => TokenCost::new(0.0003, 0.0012),
+            m if m.starts_with("gpt-5") => TokenCost::new(0.005, 0.015),
+            // o-series reasoning models
+            m if m.starts_with("o3-mini") => TokenCost::new(0.0011, 0.0044),
+            m if m.starts_with("o3") => TokenCost::new(0.01, 0.04),
+            m if m.starts_with("o1-mini") => TokenCost::new(0.003, 0.012),
+            m if m.starts_with("o1") => TokenCost::new(0.015, 0.06),
+            // GPT-4 family
             m if m.starts_with("gpt-4o-mini") => TokenCost::new(0.00015, 0.0006),
             m if m.starts_with("gpt-4o") => TokenCost::new(0.005, 0.015),
             m if m.starts_with("gpt-4-turbo") => TokenCost::new(0.01, 0.03),
@@ -100,10 +110,54 @@ impl OpenAiClient {
             _ => TokenCost::new(0.001, 0.002), // Default fallback
         }
     }
+
+    /// Check if the model is a reasoning model (GPT-5/o-series)
+    ///
+    /// Reasoning models don't support temperature, top_p, frequency_penalty,
+    /// presence_penalty, logit_bias, logprobs, or n parameters.
+    /// They use `reasoning` config and `max_completion_tokens` instead.
+    pub fn is_reasoning_model(model: &str) -> bool {
+        let model_lower = model.to_lowercase();
+
+        // GPT-5 family
+        model_lower.starts_with("gpt-5")
+            // o-series reasoning models
+            || model_lower.starts_with("o1")
+            || model_lower.starts_with("o3")
+    }
 }
 
-/// Request body for OpenAI chat completions
+/// Reasoning configuration for GPT-5/o-series models
 #[derive(Debug, Serialize)]
+struct ReasoningConfig {
+    /// Reasoning effort: "minimal", "medium", or "high"
+    effort: String,
+}
+
+impl ReasoningConfig {
+    /// Map temperature to reasoning effort
+    ///
+    /// Since reasoning models don't support temperature, we map:
+    /// - T < 0.3 → "minimal" (more deterministic)
+    /// - T < 0.7 → "medium" (balanced)
+    /// - T >= 0.7 → "high" (more exploratory)
+    fn from_temperature(temperature: f64) -> Self {
+        let effort = if temperature < 0.3 {
+            "minimal"
+        } else if temperature < 0.7 {
+            "medium"
+        } else {
+            "high"
+        };
+        Self {
+            effort: effort.to_string(),
+        }
+    }
+}
+
+/// Request body for OpenAI chat completions (used for tests)
+#[derive(Debug, Serialize)]
+#[allow(dead_code)]
 struct ChatRequest {
     model: String,
     messages: Vec<ChatMessage>,
@@ -161,13 +215,28 @@ impl LlmClient for OpenAiClient {
         Box::pin(async move {
             let start = Instant::now();
 
-            let request = ChatRequest {
-                model: self.model.clone(),
-                messages: vec![ChatMessage {
-                    role: "user".to_string(),
-                    content: prompt,
-                }],
-                temperature,
+            let messages = vec![ChatMessage {
+                role: "user".to_string(),
+                content: prompt,
+            }];
+
+            // Build appropriate request based on model type
+            let request_body: serde_json::Value = if Self::is_reasoning_model(&self.model) {
+                // Reasoning models: no temperature, use reasoning config
+                serde_json::json!({
+                    "model": self.model,
+                    "messages": messages,
+                    "reasoning": {
+                        "effort": ReasoningConfig::from_temperature(temperature).effort
+                    }
+                })
+            } else {
+                // Standard models: use temperature
+                serde_json::json!({
+                    "model": self.model,
+                    "messages": messages,
+                    "temperature": temperature
+                })
             };
 
             let url = format!("{}/chat/completions", self.base_url);
@@ -175,7 +244,7 @@ impl LlmClient for OpenAiClient {
             let response = self
                 .client
                 .post(&url)
-                .json(&request)
+                .json(&request_body)
                 .timeout(self.timeout)
                 .send()
                 .await
@@ -278,6 +347,46 @@ mod tests {
             .with_timeout(Duration::from_secs(30));
 
         assert_eq!(client.timeout, Duration::from_secs(30));
+    }
+
+    // ==========================================
+    // Reasoning Model Detection Tests (GPT-5/o-series)
+    // ==========================================
+
+    #[test]
+    fn test_is_reasoning_model_gpt5() {
+        assert!(OpenAiClient::is_reasoning_model("gpt-5"));
+        assert!(OpenAiClient::is_reasoning_model("gpt-5-mini"));
+        assert!(OpenAiClient::is_reasoning_model("gpt-5-nano"));
+        assert!(OpenAiClient::is_reasoning_model("GPT-5")); // Case insensitive
+    }
+
+    #[test]
+    fn test_is_reasoning_model_o_series() {
+        assert!(OpenAiClient::is_reasoning_model("o1"));
+        assert!(OpenAiClient::is_reasoning_model("o1-mini"));
+        assert!(OpenAiClient::is_reasoning_model("o1-preview"));
+        assert!(OpenAiClient::is_reasoning_model("o3"));
+        assert!(OpenAiClient::is_reasoning_model("o3-mini"));
+        assert!(OpenAiClient::is_reasoning_model("O1-MINI")); // Case insensitive
+    }
+
+    #[test]
+    fn test_is_not_reasoning_model() {
+        assert!(!OpenAiClient::is_reasoning_model("gpt-4o"));
+        assert!(!OpenAiClient::is_reasoning_model("gpt-4o-mini"));
+        assert!(!OpenAiClient::is_reasoning_model("gpt-3.5-turbo"));
+        assert!(!OpenAiClient::is_reasoning_model("gpt-4-turbo"));
+    }
+
+    #[test]
+    fn test_reasoning_config_from_temperature() {
+        assert_eq!(ReasoningConfig::from_temperature(0.0).effort, "minimal");
+        assert_eq!(ReasoningConfig::from_temperature(0.2).effort, "minimal");
+        assert_eq!(ReasoningConfig::from_temperature(0.3).effort, "medium");
+        assert_eq!(ReasoningConfig::from_temperature(0.5).effort, "medium");
+        assert_eq!(ReasoningConfig::from_temperature(0.7).effort, "high");
+        assert_eq!(ReasoningConfig::from_temperature(1.0).effort, "high");
     }
 
     #[test]
@@ -587,6 +696,78 @@ mod tests {
 
         let response = client.generate("test", 0.0).await.unwrap();
         assert_eq!(response.content, "");
+    }
+
+    #[tokio::test]
+    async fn test_generate_reasoning_model_sends_reasoning_config() {
+        let server = wiremock::MockServer::start().await;
+
+        // Verify request contains "reasoning" and "effort", not "temperature"
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/chat/completions"))
+            .and(wiremock::matchers::body_string_contains("reasoning"))
+            .and(wiremock::matchers::body_string_contains("effort"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "choices": [{"message": {"role": "assistant", "content": "4"}}],
+                    "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7}
+                })),
+            )
+            .mount(&server)
+            .await;
+
+        let client = OpenAiClient::with_api_key("gpt-5", "test-key")
+            .unwrap()
+            .with_base_url(&server.uri());
+
+        let response = client.generate("What is 2+2?", 0.5).await.unwrap();
+        assert_eq!(response.content, "4");
+    }
+
+    #[tokio::test]
+    async fn test_generate_standard_model_sends_temperature() {
+        let server = wiremock::MockServer::start().await;
+
+        // Verify request contains "temperature", not "reasoning"
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/chat/completions"))
+            .and(wiremock::matchers::body_string_contains("temperature"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "choices": [{"message": {"role": "assistant", "content": "4"}}],
+                    "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7}
+                })),
+            )
+            .mount(&server)
+            .await;
+
+        let client = OpenAiClient::with_api_key("gpt-4o-mini", "test-key")
+            .unwrap()
+            .with_base_url(&server.uri());
+
+        let response = client.generate("What is 2+2?", 0.5).await.unwrap();
+        assert_eq!(response.content, "4");
+    }
+
+    #[test]
+    fn test_model_cost_gpt5() {
+        let cost = OpenAiClient::model_cost("gpt-5");
+        assert!((cost.input_per_1k - 0.005).abs() < 1e-10);
+        assert!((cost.output_per_1k - 0.015).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_model_cost_o1() {
+        let cost = OpenAiClient::model_cost("o1");
+        assert!((cost.input_per_1k - 0.015).abs() < 1e-10);
+        assert!((cost.output_per_1k - 0.06).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_model_cost_o3_mini() {
+        let cost = OpenAiClient::model_cost("o3-mini");
+        assert!((cost.input_per_1k - 0.0011).abs() < 1e-10);
+        assert!((cost.output_per_1k - 0.0044).abs() < 1e-10);
     }
 
     #[test]

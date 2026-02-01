@@ -4,9 +4,8 @@
 //! It has feature parity with the MCP tools.
 
 use clap::{Parser, Subcommand, ValueEnum};
-use maker::core::{
-    calculate_kmin, validate_token_length, vote_with_margin, MockLlmClient, RedFlag, VoteConfig,
-};
+use maker::core::{calculate_kmin, validate_token_length, vote_with_margin, RedFlag, VoteConfig};
+use maker::llm::adapter::{create_provider, ProviderConfig};
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read};
 use std::process::ExitCode;
@@ -265,10 +264,17 @@ fn main() -> ExitCode {
             k_margin,
             max_samples,
             temperature,
-            provider: _,
+            provider,
             adaptive: _,
             matcher: _,
-        } => execute_vote(cli.format, prompt, k_margin, max_samples, temperature),
+        } => execute_vote(
+            cli.format,
+            prompt,
+            k_margin,
+            max_samples,
+            temperature,
+            &provider,
+        ),
 
         Commands::Validate {
             response,
@@ -321,6 +327,7 @@ fn execute_vote(
     k_margin: usize,
     max_samples: usize,
     _temperature: f64,
+    provider: &str,
 ) -> Result<(), String> {
     let prompt = get_input(prompt, "prompt")?;
 
@@ -332,11 +339,21 @@ fn execute_vote(
         return Err("prompt cannot be empty".to_string());
     }
 
-    // Use MockLlmClient for demonstration (real implementation would use actual providers)
-    let client = MockLlmClient::constant("example response");
+    // Create real provider based on CLI argument
+    let provider_config = ProviderConfig::default();
+    let client = match create_provider(provider, Some(provider_config)) {
+        Ok(Some(c)) => c,
+        Ok(None) => {
+            return Err(format!(
+                "Unknown provider: '{}'. Use: ollama, openai, anthropic",
+                provider
+            ))
+        }
+        Err(e) => return Err(format!("Failed to create provider '{}': {}", provider, e)),
+    };
     let config = VoteConfig::default().with_max_samples(max_samples);
 
-    let result = vote_with_margin(&prompt, k_margin, &client, config);
+    let result = vote_with_margin(&prompt, k_margin, client.as_ref(), config);
 
     match result {
         Ok(vote_result) => {

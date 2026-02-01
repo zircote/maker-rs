@@ -33,6 +33,20 @@ pub struct Metrics {
     pub total_cost_usd: f64,
     /// Steps completed
     pub steps_completed: u64,
+
+    // Decomposition metrics (v0.3.0)
+    /// Total decomposition proposals
+    pub decompositions_proposed: u64,
+    /// Total decompositions accepted
+    pub decompositions_accepted: u64,
+    /// Total decompositions rejected
+    pub decompositions_rejected: u64,
+    /// Total subtasks started
+    pub subtasks_started: u64,
+    /// Total subtasks completed
+    pub subtasks_completed: u64,
+    /// Total solutions composed
+    pub solutions_composed: u64,
 }
 
 impl Metrics {
@@ -111,6 +125,47 @@ impl Metrics {
         }
     }
 
+    // Decomposition metrics recording
+
+    /// Record a decomposition proposal
+    pub fn record_decomposition_proposed(&mut self) {
+        self.decompositions_proposed += 1;
+    }
+
+    /// Record a decomposition acceptance
+    pub fn record_decomposition_accepted(&mut self) {
+        self.decompositions_accepted += 1;
+    }
+
+    /// Record a decomposition rejection
+    pub fn record_decomposition_rejected(&mut self) {
+        self.decompositions_rejected += 1;
+    }
+
+    /// Record a subtask start
+    pub fn record_subtask_started(&mut self) {
+        self.subtasks_started += 1;
+    }
+
+    /// Record a subtask completion
+    pub fn record_subtask_completed(&mut self) {
+        self.subtasks_completed += 1;
+    }
+
+    /// Record a solution composition
+    pub fn record_solution_composed(&mut self) {
+        self.solutions_composed += 1;
+    }
+
+    /// Get decomposition acceptance rate
+    pub fn decomposition_acceptance_rate(&self) -> f64 {
+        if self.decompositions_proposed == 0 {
+            0.0
+        } else {
+            self.decompositions_accepted as f64 / self.decompositions_proposed as f64
+        }
+    }
+
     /// Format metrics as Prometheus text format
     pub fn to_prometheus(&self) -> String {
         let mut output = String::new();
@@ -181,6 +236,49 @@ impl Metrics {
             self.steps_completed
         ));
 
+        // Decomposition metrics
+        output.push_str("# HELP maker_decompositions_proposed_total Total decomposition proposals\n");
+        output.push_str("# TYPE maker_decompositions_proposed_total counter\n");
+        output.push_str(&format!(
+            "maker_decompositions_proposed_total {}\n",
+            self.decompositions_proposed
+        ));
+
+        output.push_str("# HELP maker_decompositions_accepted_total Total decompositions accepted\n");
+        output.push_str("# TYPE maker_decompositions_accepted_total counter\n");
+        output.push_str(&format!(
+            "maker_decompositions_accepted_total {}\n",
+            self.decompositions_accepted
+        ));
+
+        output.push_str("# HELP maker_decompositions_rejected_total Total decompositions rejected\n");
+        output.push_str("# TYPE maker_decompositions_rejected_total counter\n");
+        output.push_str(&format!(
+            "maker_decompositions_rejected_total {}\n",
+            self.decompositions_rejected
+        ));
+
+        output.push_str("# HELP maker_subtasks_started_total Total subtasks started\n");
+        output.push_str("# TYPE maker_subtasks_started_total counter\n");
+        output.push_str(&format!(
+            "maker_subtasks_started_total {}\n",
+            self.subtasks_started
+        ));
+
+        output.push_str("# HELP maker_subtasks_completed_total Total subtasks completed\n");
+        output.push_str("# TYPE maker_subtasks_completed_total counter\n");
+        output.push_str(&format!(
+            "maker_subtasks_completed_total {}\n",
+            self.subtasks_completed
+        ));
+
+        output.push_str("# HELP maker_solutions_composed_total Total solutions composed\n");
+        output.push_str("# TYPE maker_solutions_composed_total counter\n");
+        output.push_str(&format!(
+            "maker_solutions_composed_total {}\n",
+            self.solutions_composed
+        ));
+
         output
     }
 
@@ -216,6 +314,24 @@ impl Metrics {
             self.total_cost_usd,
             self.avg_cost_per_step(),
             self.steps_completed
+        ));
+
+        output.push_str(&format!(
+            "\nDecomposition: proposed={}, accepted={}, rejected={} (acceptance rate={:.1}%)\n",
+            self.decompositions_proposed,
+            self.decompositions_accepted,
+            self.decompositions_rejected,
+            self.decomposition_acceptance_rate() * 100.0
+        ));
+
+        output.push_str(&format!(
+            "Subtasks: started={}, completed={}\n",
+            self.subtasks_started, self.subtasks_completed
+        ));
+
+        output.push_str(&format!(
+            "Solutions composed: {}\n",
+            self.solutions_composed
         ));
 
         output
@@ -288,21 +404,31 @@ impl MetricsObserver {
                 metrics.record_step_cost(*cumulative_cost);
             }
 
-            // Decomposition events (v0.3.0) - informational for now
-            MakerEvent::DecompositionProposed { .. }
-            | MakerEvent::DecompositionAccepted { .. }
-            | MakerEvent::DecompositionRejected { .. } => {
-                // Future: add decomposition-specific metrics
+            // Decomposition events (v0.3.0)
+            MakerEvent::DecompositionProposed { .. } => {
+                metrics.record_decomposition_proposed();
             }
 
-            // Subtask events (v0.3.0) - informational for now
-            MakerEvent::SubtaskStarted { .. } | MakerEvent::SubtaskCompleted { .. } => {
-                // Future: add subtask execution metrics
+            MakerEvent::DecompositionAccepted { .. } => {
+                metrics.record_decomposition_accepted();
             }
 
-            // Solution composition events (v0.3.0) - informational for now
+            MakerEvent::DecompositionRejected { .. } => {
+                metrics.record_decomposition_rejected();
+            }
+
+            // Subtask events (v0.3.0)
+            MakerEvent::SubtaskStarted { .. } => {
+                metrics.record_subtask_started();
+            }
+
+            MakerEvent::SubtaskCompleted { .. } => {
+                metrics.record_subtask_completed();
+            }
+
+            // Solution composition events (v0.3.0)
             MakerEvent::SolutionComposed { .. } => {
-                // Future: add composition metrics (success rate, depth distribution)
+                metrics.record_solution_composed();
             }
         }
     }
@@ -576,5 +702,92 @@ mod tests {
         assert!(report.contains("gpt-4: 1"));
         assert!(report.contains("avg=100.0ms"));
         assert!(report.contains("steps=1"));
+    }
+
+    // ==========================================
+    // Decomposition Metrics Tests
+    // ==========================================
+
+    #[test]
+    fn test_record_decomposition_proposed() {
+        let mut metrics = Metrics::new();
+        metrics.record_decomposition_proposed();
+        metrics.record_decomposition_proposed();
+        assert_eq!(metrics.decompositions_proposed, 2);
+    }
+
+    #[test]
+    fn test_record_decomposition_accepted_rejected() {
+        let mut metrics = Metrics::new();
+        metrics.record_decomposition_accepted();
+        metrics.record_decomposition_rejected();
+        metrics.record_decomposition_rejected();
+        assert_eq!(metrics.decompositions_accepted, 1);
+        assert_eq!(metrics.decompositions_rejected, 2);
+    }
+
+    #[test]
+    fn test_record_subtask_events() {
+        let mut metrics = Metrics::new();
+        metrics.record_subtask_started();
+        metrics.record_subtask_started();
+        metrics.record_subtask_completed();
+        assert_eq!(metrics.subtasks_started, 2);
+        assert_eq!(metrics.subtasks_completed, 1);
+    }
+
+    #[test]
+    fn test_record_solution_composed() {
+        let mut metrics = Metrics::new();
+        metrics.record_solution_composed();
+        metrics.record_solution_composed();
+        metrics.record_solution_composed();
+        assert_eq!(metrics.solutions_composed, 3);
+    }
+
+    #[test]
+    fn test_decomposition_acceptance_rate() {
+        let mut metrics = Metrics::new();
+        assert!((metrics.decomposition_acceptance_rate() - 0.0).abs() < f64::EPSILON);
+
+        metrics.decompositions_proposed = 10;
+        metrics.decompositions_accepted = 8;
+        assert!((metrics.decomposition_acceptance_rate() - 0.8).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_prometheus_decomposition_metrics() {
+        let mut metrics = Metrics::new();
+        metrics.record_decomposition_proposed();
+        metrics.record_decomposition_accepted();
+        metrics.record_subtask_started();
+        metrics.record_subtask_completed();
+        metrics.record_solution_composed();
+
+        let output = metrics.to_prometheus();
+
+        assert!(output.contains("maker_decompositions_proposed_total 1"));
+        assert!(output.contains("maker_decompositions_accepted_total 1"));
+        assert!(output.contains("maker_subtasks_started_total 1"));
+        assert!(output.contains("maker_subtasks_completed_total 1"));
+        assert!(output.contains("maker_solutions_composed_total 1"));
+    }
+
+    #[test]
+    fn test_report_decomposition_section() {
+        let mut metrics = Metrics::new();
+        metrics.decompositions_proposed = 10;
+        metrics.decompositions_accepted = 8;
+        metrics.decompositions_rejected = 2;
+        metrics.subtasks_started = 20;
+        metrics.subtasks_completed = 18;
+        metrics.solutions_composed = 5;
+
+        let report = metrics.report();
+
+        assert!(report.contains("Decomposition: proposed=10, accepted=8, rejected=2"));
+        assert!(report.contains("acceptance rate=80.0%"));
+        assert!(report.contains("Subtasks: started=20, completed=18"));
+        assert!(report.contains("Solutions composed: 5"));
     }
 }

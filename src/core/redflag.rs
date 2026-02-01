@@ -258,6 +258,78 @@ pub fn validate_json_schema<T: DeserializeOwned>(content: &str) -> ValidationRes
     })
 }
 
+/// Patterns that indicate circular reasoning or self-referential logic
+const CIRCULAR_PATTERNS: &[&str] = &[
+    "as i mentioned",
+    "as stated above",
+    "as previously stated",
+    "as noted earlier",
+    "as i said",
+    "as explained before",
+    "referring back to",
+    "going back to what i said",
+];
+
+/// Detect logic loops and circular reasoning in content
+///
+/// Returns red flags if circular reference patterns are detected with
+/// high frequency, indicating the model may be stuck in a loop.
+pub fn detect_logic_loops(content: &str) -> Vec<RedFlag> {
+    let content_lower = content.to_lowercase();
+    let mut matches = 0;
+
+    for pattern in CIRCULAR_PATTERNS {
+        matches += content_lower.matches(pattern).count();
+    }
+
+    // Threshold: more than 2 circular patterns in a single response
+    // suggests the model is looping
+    if matches > 2 {
+        vec![RedFlag::LogicLoop {
+            pattern: format!(
+                "Detected {} circular reasoning patterns, suggesting logic loop",
+                matches
+            ),
+        }]
+    } else {
+        vec![]
+    }
+}
+
+/// Validate content against multiple rules, collecting all violations
+///
+/// Unlike individual validators that fail fast, this collects all red flags
+/// for comprehensive error reporting.
+///
+/// # Arguments
+///
+/// * `content` - The content to validate
+/// * `token_limit` - Optional maximum token/character limit
+/// * `check_logic_loops` - Whether to check for logic loops
+///
+/// # Returns
+///
+/// Vector of all triggered red flags (empty if valid)
+pub fn validate_all_with_options(
+    content: &str,
+    token_limit: Option<usize>,
+    check_logic_loops: bool,
+) -> Vec<RedFlag> {
+    let mut flags = Vec::new();
+
+    if let Some(limit) = token_limit {
+        if let Err(flag) = validate_token_length(content, limit) {
+            flags.push(flag);
+        }
+    }
+
+    if check_logic_loops {
+        flags.extend(detect_logic_loops(content));
+    }
+
+    flags
+}
+
 /// Validate content against multiple rules, collecting all violations
 ///
 /// Unlike individual validators that fail fast, this collects all red flags
@@ -272,17 +344,7 @@ pub fn validate_json_schema<T: DeserializeOwned>(content: &str) -> ValidationRes
 ///
 /// Vector of all triggered red flags (empty if valid)
 pub fn validate_all(content: &str, token_limit: Option<usize>) -> Vec<RedFlag> {
-    let mut flags = Vec::new();
-
-    if let Some(limit) = token_limit {
-        if let Err(flag) = validate_token_length(content, limit) {
-            flags.push(flag);
-        }
-    }
-
-    // Future: Add logic loop detection here
-
-    flags
+    validate_all_with_options(content, token_limit, false)
 }
 
 /// Red-flag validator with configurable rules
@@ -331,7 +393,7 @@ impl RedFlagValidator {
 
     /// Validate content and return all triggered red flags
     pub fn validate(&self, content: &str) -> Vec<RedFlag> {
-        validate_all(content, self.token_limit)
+        validate_all_with_options(content, self.token_limit, self.check_logic_loops)
     }
 
     /// Validate content, returning Ok if no red flags, Err with first flag otherwise
@@ -679,5 +741,68 @@ mod tests {
         let hash2 = hash_content(content);
         assert_eq!(hash1, hash2);
         assert_eq!(hash1.len(), 16); // 16 hex chars = 64 bits
+    }
+
+    // ==========================================
+    // Logic Loop Detection Tests
+    // ==========================================
+
+    #[test]
+    fn test_detect_logic_loop_circular_reference() {
+        let content = "As I mentioned earlier, the answer is X. And as I said, X is correct. As noted earlier, we can confirm X is the answer.";
+        let flags = detect_logic_loops(content);
+        assert!(!flags.is_empty(), "Should detect circular reasoning");
+        assert!(matches!(flags[0], RedFlag::LogicLoop { .. }));
+    }
+
+    #[test]
+    fn test_no_logic_loop_normal_text() {
+        let content = "The answer is 4 because 2 plus 2 equals 4.";
+        let flags = detect_logic_loops(content);
+        assert!(
+            flags.is_empty(),
+            "Normal text should not trigger logic loop detection"
+        );
+    }
+
+    #[test]
+    fn test_logic_loop_threshold() {
+        // Exactly 2 patterns should NOT trigger (threshold is > 2)
+        let content = "As I mentioned, the first point. As I said, the second point.";
+        let flags = detect_logic_loops(content);
+        assert!(flags.is_empty(), "2 patterns should not trigger");
+
+        // 3 patterns SHOULD trigger
+        let content = "As I mentioned, first. As I said, second. As noted earlier, third.";
+        let flags = detect_logic_loops(content);
+        assert!(!flags.is_empty(), "3 patterns should trigger");
+    }
+
+    #[test]
+    fn test_validator_with_logic_loop_detection() {
+        let validator = RedFlagValidator::new().with_logic_loop_detection();
+        assert!(validator.check_logic_loops);
+
+        let content = "As I mentioned, X. As I said, X. As noted earlier, X again.";
+        let flags = validator.validate(content);
+        assert!(!flags.is_empty());
+        assert!(matches!(flags[0], RedFlag::LogicLoop { .. }));
+    }
+
+    #[test]
+    fn test_validator_without_logic_loop_detection() {
+        let validator = RedFlagValidator::new(); // Default: no logic loop detection
+        assert!(!validator.check_logic_loops);
+
+        let content = "As I mentioned, X. As I said, X. As noted earlier, X again.";
+        let flags = validator.validate(content);
+        assert!(flags.is_empty()); // No flags because detection is disabled
+    }
+
+    #[test]
+    fn test_logic_loop_case_insensitive() {
+        let content = "AS I MENTIONED first. AS I SAID second. AS NOTED EARLIER third.";
+        let flags = detect_logic_loops(content);
+        assert!(!flags.is_empty(), "Detection should be case insensitive");
     }
 }

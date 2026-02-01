@@ -341,6 +341,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore] // Requires running Ollama instance
     async fn test_vote_tool_handler() {
         let server = MakerServer::new();
         let request = VoteRequest {
@@ -356,7 +357,7 @@ mod tests {
 
         let result = server.vote(Parameters(request)).await;
 
-        // Should succeed (uses internal mock-like behavior)
+        // Should succeed with running Ollama
         assert!(result.is_ok());
     }
 
