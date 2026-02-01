@@ -117,6 +117,7 @@ fn test_vote_request_validation_k_margin_zero() {
         max_samples: None,
         temperature_diversity: None,
         provider: None,
+        model: None,
         adaptive: None,
         matcher: None,
         ensemble: None,
@@ -133,6 +134,7 @@ fn test_vote_request_validation_empty_prompt() {
         max_samples: None,
         temperature_diversity: None,
         provider: None,
+        model: None,
         adaptive: None,
         matcher: None,
         ensemble: None,
@@ -149,6 +151,7 @@ fn test_vote_request_validation_prompt_too_long() {
         max_samples: None,
         temperature_diversity: None,
         provider: None,
+        model: None,
         adaptive: None,
         matcher: None,
         ensemble: None,
@@ -454,7 +457,8 @@ fn test_json_injection_prevention() {
 // ============================================
 
 #[test]
-fn test_vote_tool_execution_with_mock() {
+#[ignore] // Requires running Ollama with llama3.2:3b model
+fn test_vote_tool_execution_with_provider() {
     use maker::mcp::tools::vote::execute_vote;
 
     let request = VoteRequest {
@@ -462,7 +466,8 @@ fn test_vote_tool_execution_with_mock() {
         k_margin: 3,
         max_samples: Some(50),
         temperature_diversity: None,
-        provider: None,
+        provider: Some("ollama".to_string()),
+        model: Some("llama3.2:3b".to_string()),
         adaptive: None,
         matcher: None,
         ensemble: None,

@@ -350,6 +350,7 @@ mod tests {
             max_samples: Some(20),
             temperature_diversity: None,
             provider: None,
+            model: None,
             adaptive: None,
             matcher: None,
             ensemble: None,

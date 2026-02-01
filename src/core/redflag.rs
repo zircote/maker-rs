@@ -59,12 +59,7 @@ pub fn validate_agent_output(
 
     match strict_result {
         Ok(output) => {
-            // Validate next_state is not null/empty
-            if output.next_state.is_null() {
-                let msg = "next_state field is null".to_string();
-                warn!(content_hash = %hash_content(content), "Schema violation: {}", msg);
-                return Err(RedFlag::FormatViolation { message: msg });
-            }
+            validate_next_state_not_null(&output.next_state, content)?;
             Ok(output)
         }
         Err(e) => {
@@ -105,11 +100,7 @@ pub fn validate_agent_output(
                     let lenient: Result<LenientAgentOutput, _> = serde_json::from_str(content);
                     match lenient {
                         Ok(output) => {
-                            if output.next_state.is_null() {
-                                let msg = "next_state field is null".to_string();
-                                warn!(content_hash = %hash_content(content), "Schema violation: {}", msg);
-                                return Err(RedFlag::FormatViolation { message: msg });
-                            }
+                            validate_next_state_not_null(&output.next_state, content)?;
                             return Ok(StrictAgentOutput {
                                 move_action: output.move_action,
                                 next_state: output.next_state,
@@ -139,6 +130,17 @@ fn hash_content(content: &str) -> String {
     let mut hasher = DefaultHasher::new();
     content.hash(&mut hasher);
     format!("{:016x}", hasher.finish())
+}
+
+/// Validate that next_state is not null
+fn validate_next_state_not_null(state: &serde_json::Value, content: &str) -> Result<(), RedFlag> {
+    if state.is_null() {
+        let msg = "next_state field is null".to_string();
+        warn!(content_hash = %hash_content(content), "Schema violation: {}", msg);
+        Err(RedFlag::FormatViolation { message: msg })
+    } else {
+        Ok(())
+    }
 }
 
 /// Red flag indicating why a response was rejected

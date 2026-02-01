@@ -572,15 +572,9 @@ fn generate_completions(shell: Shell) {
 
 fn get_input(arg: Option<String>, name: &str) -> Result<String, String> {
     match arg {
-        Some(s) if s == "-" => {
-            let mut input = String::new();
-            io::stdin()
-                .read_to_string(&mut input)
-                .map_err(|e| format!("Failed to read {} from stdin: {}", name, e))?;
-            Ok(input.trim().to_string())
-        }
-        Some(s) => Ok(s),
-        None => {
+        Some(s) if s != "-" => Ok(s),
+        _ => {
+            // Read from stdin when no arg provided or arg is "-"
             let mut input = String::new();
             io::stdin()
                 .read_to_string(&mut input)

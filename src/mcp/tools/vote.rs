@@ -30,6 +30,9 @@ pub struct VoteRequest {
     /// LLM provider to use (optional)
     #[serde(default)]
     pub provider: Option<String>,
+    /// Model name override for the provider (optional)
+    #[serde(default)]
+    pub model: Option<String>,
     /// Enable adaptive k-margin for this vote (per-call override)
     #[serde(default)]
     pub adaptive: Option<bool>,
@@ -231,7 +234,10 @@ pub fn execute_vote(
 
     // Create provider based on request (defaults to ollama)
     let provider_name = request.provider.as_deref().unwrap_or("ollama");
-    let provider_config = ProviderConfig::default();
+    let provider_config = ProviderConfig {
+        model: request.model.clone(),
+        ..Default::default()
+    };
 
     let client: Box<dyn crate::core::executor::LlmClient> =
         match create_provider(provider_name, Some(provider_config)) {
@@ -298,6 +304,7 @@ mod tests {
             max_samples: None,
             temperature_diversity: None,
             provider: None,
+            model: None,
             adaptive: None,
             matcher: None,
             ensemble: None,
@@ -312,6 +319,7 @@ mod tests {
             max_samples: Some(20),
             temperature_diversity: None,
             provider: None,
+            model: None,
             adaptive: None,
             matcher: None,
             ensemble: None,
@@ -388,6 +396,7 @@ mod tests {
             max_samples: Some(50),
             temperature_diversity: Some(0.2),
             provider: Some("ollama".to_string()),
+            model: None,
             adaptive: None,
             matcher: None,
             ensemble: None,
@@ -459,6 +468,7 @@ mod tests {
             max_samples: Some(100),
             temperature_diversity: Some(0.2),
             provider: Some("unknown-provider".to_string()),
+            model: None,
             adaptive: None,
             matcher: None,
             ensemble: None,
