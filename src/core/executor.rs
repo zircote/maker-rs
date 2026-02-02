@@ -86,6 +86,12 @@ impl VoteConfig {
         self.matcher = matcher;
         self
     }
+
+    /// Set diversity temperature for samples after the first
+    pub fn with_diversity_temperature(mut self, temp: f64) -> Self {
+        self.diversity_temperature = temp;
+        self
+    }
 }
 
 /// Cost metrics for a voting session

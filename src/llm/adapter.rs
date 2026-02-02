@@ -22,12 +22,29 @@ pub struct BlockingLlmAdapter<C: AsyncLlmClient> {
 
 impl<C: AsyncLlmClient + 'static> BlockingLlmAdapter<C> {
     /// Create a new adapter wrapping an async client
+    ///
+    /// # Panics
+    ///
+    /// Panics if the tokio runtime cannot be created. This typically only fails
+    /// if the system is out of resources (file descriptors, memory). For fallible
+    /// construction, use [`BlockingLlmAdapter::try_new`] instead.
     pub fn new(client: C) -> Self {
         let runtime = Runtime::new().expect("Failed to create tokio runtime");
         Self {
             client,
             runtime: Arc::new(runtime),
         }
+    }
+
+    /// Try to create a new adapter, returning an error if runtime creation fails
+    ///
+    /// Use this when you need to handle runtime creation failures gracefully.
+    pub fn try_new(client: C) -> Result<Self, std::io::Error> {
+        let runtime = Runtime::new()?;
+        Ok(Self {
+            client,
+            runtime: Arc::new(runtime),
+        })
     }
 
     /// Create with a shared runtime (for reuse across multiple adapters)
@@ -54,7 +71,16 @@ impl<C: AsyncLlmClient + 'static> SyncLlmClient for BlockingLlmAdapter<C> {
     }
 }
 
-// Make the adapter Send + Sync since it uses Arc<Runtime>
+// SAFETY: BlockingLlmAdapter is Send + Sync because:
+// 1. `runtime: Arc<Runtime>` - Arc<T> is Send+Sync when T: Send+Sync, and tokio::Runtime is both
+// 2. `client: C` - The wrapped async client C is accessed only through `&self` in block_on(),
+//    which provides exclusive access during the blocking call. The client is never shared across
+//    threads simultaneously; each call to generate() blocks until completion.
+// 3. All async operations complete within the block_on() call, ensuring no dangling references.
+//
+// The 'static bound on C ensures the client doesn't contain non-static references that could
+// become invalid. The AsyncLlmClient trait requires only &self for generate(), making concurrent
+// access safe when serialized through block_on().
 unsafe impl<C: AsyncLlmClient + 'static> Send for BlockingLlmAdapter<C> {}
 unsafe impl<C: AsyncLlmClient + 'static> Sync for BlockingLlmAdapter<C> {}
 

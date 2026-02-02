@@ -14,6 +14,13 @@
 //!
 //! `VoteRace` is designed for concurrent vote casting using interior mutability.
 //! Multiple sampling tasks can cast votes simultaneously.
+//!
+//! # Panic Behavior
+//!
+//! Methods that acquire the internal mutex will panic if the mutex is poisoned
+//! (i.e., another thread panicked while holding the lock). This is intentional:
+//! mutex poisoning indicates a serious bug, and continuing with potentially
+//! corrupted vote state could lead to incorrect consensus decisions.
 
 use crate::core::matcher::{default_matcher, CandidateMatcher};
 use std::collections::HashMap;
@@ -194,7 +201,7 @@ impl VoteRace {
     /// The new vote count for this candidate (after canonicalization)
     pub fn cast_vote(&self, candidate: CandidateId) -> usize {
         let canonical = CandidateId::new(self.matcher.canonicalize(candidate.as_str()));
-        let mut votes = self.votes.lock().unwrap();
+        let mut votes = self.votes.lock().expect("vote state mutex poisoned");
         let count = votes.entry(canonical.clone()).or_insert(0);
         *count += 1;
         let new_count = *count;
@@ -221,7 +228,7 @@ impl VoteRace {
     /// - `VoteCheckResult::Winner` if a candidate has achieved the required margin
     /// - `VoteCheckResult::Ongoing` if no winner yet
     pub fn check_winner(&self) -> VoteCheckResult {
-        let votes = self.votes.lock().unwrap();
+        let votes = self.votes.lock().expect("vote state mutex poisoned");
 
         if votes.is_empty() {
             return VoteCheckResult::Ongoing {
@@ -269,12 +276,19 @@ impl VoteRace {
 
     /// Get the current vote counts (snapshot)
     pub fn get_votes(&self) -> HashMap<CandidateId, usize> {
-        self.votes.lock().unwrap().clone()
+        self.votes
+            .lock()
+            .expect("vote state mutex poisoned")
+            .clone()
     }
 
     /// Get the total number of votes cast
     pub fn total_votes(&self) -> usize {
-        self.votes.lock().unwrap().values().sum()
+        self.votes
+            .lock()
+            .expect("vote state mutex poisoned")
+            .values()
+            .sum()
     }
 
     /// Get the configured k-margin
@@ -302,7 +316,12 @@ impl VoteRace {
 impl Clone for VoteRace {
     fn clone(&self) -> Self {
         Self {
-            votes: Arc::new(Mutex::new(self.votes.lock().unwrap().clone())),
+            votes: Arc::new(Mutex::new(
+                self.votes
+                    .lock()
+                    .expect("vote state mutex poisoned")
+                    .clone(),
+            )),
             k_margin: self.k_margin,
             event_callback: self.event_callback.clone(),
             matcher: self.matcher.clone(),
@@ -312,7 +331,7 @@ impl Clone for VoteRace {
 
 impl std::fmt::Debug for VoteRace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let votes = self.votes.lock().unwrap();
+        let votes = self.votes.lock().expect("vote state mutex poisoned");
         f.debug_struct("VoteRace")
             .field("votes", &*votes)
             .field("k_margin", &self.k_margin)

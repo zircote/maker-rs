@@ -3,6 +3,12 @@
 //! Tracks Prometheus-compatible metrics for monitoring:
 //! - Counters: votes, red flags, samples
 //! - Histograms: API latency, cost per step
+//!
+//! # Panic Behavior
+//!
+//! The observer will panic if the internal mutex is poisoned, indicating
+//! that another thread panicked while updating metrics. This is intentional
+//! as corrupted metrics state should not propagate silently.
 
 use crate::events::{EventBus, MakerEvent};
 use std::collections::HashMap;
@@ -374,7 +380,7 @@ impl MetricsObserver {
 
     /// Process a single event and update metrics
     fn process_event(&self, event: &MakerEvent) {
-        let mut metrics = self.metrics.lock().unwrap();
+        let mut metrics = self.metrics.lock().expect("metrics mutex poisoned");
 
         match event {
             MakerEvent::SampleRequested { model, .. } => {

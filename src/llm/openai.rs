@@ -222,13 +222,11 @@ impl LlmClient for OpenAiClient {
 
             // Build appropriate request based on model type
             let request_body: serde_json::Value = if Self::is_reasoning_model(&self.model) {
-                // Reasoning models: no temperature, use reasoning config
+                // Reasoning models (gpt-5, o-series): no temperature parameter
+                // These models handle reasoning internally
                 serde_json::json!({
                     "model": self.model,
-                    "messages": messages,
-                    "reasoning": {
-                        "effort": ReasoningConfig::from_temperature(temperature).effort
-                    }
+                    "messages": messages
                 })
             } else {
                 // Standard models: use temperature

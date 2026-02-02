@@ -649,7 +649,12 @@ impl SolutionDiscriminator {
             .into_iter()
             .find(|(_, idx)| *idx == winner_idx)
             .map(|(result, _)| result)
-            .unwrap_or_else(|| panic!("Winner index not found"));
+            .ok_or_else(|| AggregationError::VotingFailed {
+                message: format!(
+                    "Winner index {} not found in aggregated candidates",
+                    winner_idx
+                ),
+            })?;
 
         Ok(winner)
     }

@@ -468,6 +468,8 @@ impl<A: DecompositionAgent> RecursiveOrchestrator<A> {
                 match &e {
                     OrchestrationError::Cancelled => self.metrics.cancelled = true,
                     OrchestrationError::Timeout { .. } => self.metrics.timed_out = true,
+                    // Other errors (DepthExceeded, CycleDetected, Decomposition, Aggregation)
+                    // don't have dedicated metric flags - they're captured in the error itself
                     _ => {}
                 }
                 Err(e)
