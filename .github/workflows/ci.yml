@@ -1,6 +1,7 @@
+---
 name: CI
 
-on:
+"on":
   push:
     branches: [main]
   pull_request:
@@ -11,6 +12,31 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
+  # ===========================================================================
+  # Security Scanning
+  # ===========================================================================
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  license-check:
+    name: License & Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: --all-features
+
+  # ===========================================================================
+  # Quality Gates
+  # ===========================================================================
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -49,9 +75,13 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate coverage
-        run: cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-filename-regex '(main\.rs|maker-mcp\.rs)'
-      - name: Check coverage threshold (library code, excluding binaries)
-        run: cargo llvm-cov --all-features --fail-under-lines 90 --ignore-filename-regex '(main\.rs|maker-mcp\.rs)'
+        run: |
+          cargo llvm-cov --all-features --lcov --output-path lcov.info \
+            --ignore-filename-regex '(main\.rs|maker-mcp\.rs)'
+      - name: Check coverage threshold
+        run: |
+          cargo llvm-cov --all-features --fail-under-lines 90 \
+            --ignore-filename-regex '(main\.rs|maker-mcp\.rs)'
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
