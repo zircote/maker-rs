@@ -16,7 +16,7 @@ This study presents an empirical validation of SPRT-based k-margin voting as an 
 
 ### 1.1 Background
 
-Large Language Models (LLMs) have demonstrated remarkable capabilities across diverse tasks, yet their deployment in autonomous agent systems faces a fundamental challenge: error accumulation over multi-step execution. In long-horizon tasks comprising hundreds or thousands of sequential decisions, even high per-step accuracy (e.g., 99%) compounds to unacceptable failure rates. A 1000-step task with 99% per-step accuracy yields only 0.004% overall success probability.
+Large Language Models (LLMs) have demonstrated strong performance across diverse tasks, yet their deployment in autonomous agent systems faces a fundamental challenge: error accumulation over multi-step execution. In long-horizon tasks comprising hundreds or thousands of sequential decisions, even high per-step accuracy (e.g., 99%) compounds to unacceptable failure rates. A 1000-step task with 99% per-step accuracy yields only 0.004% overall success probability.
 
 The Sequential Probability Ratio Test (SPRT), introduced by Wald (1945), provides a theoretically grounded framework for sequential hypothesis testing with controllable error bounds. The MAKER framework (Massively decomposed Agentic processes with K-margin Error Reduction) adapts SPRT principles to LLM error correction through k-margin voting, where a candidate answer must achieve a lead of k votes over all alternatives before acceptance.
 
@@ -186,7 +186,7 @@ Given our observed accuracies (p_weak ≈ 0.21, p_strong ≈ 1.0), the theoretic
 
 ### 4.2 Why Weak Models Alone Show No Benefit
 
-The failure of homogeneous voting with llama3.2:3b (p > 0.3 for all k) can be attributed to error correlation. When the same model generates multiple samples, errors tend to cluster around systematic misunderstandings rather than random noise. The k-margin voting mechanism assumes approximate independence between samples—an assumption violated in homogeneous configurations with high base error rates.
+The failure of homogeneous voting with llama3.2:3b (p > 0.3 for all k) can be attributed to error correlation. When the same model generates multiple samples, errors tend to cluster around systematic misunderstandings rather than random noise. The k-margin voting mechanism assumes approximate independence between samples, an assumption violated in homogeneous configurations with high base error rates.
 
 ### 4.3 The Ceiling Effect in Strong Models
 
