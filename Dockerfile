@@ -14,12 +14,10 @@ FROM --platform=$BUILDPLATFORM rust:latest AS builder
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-# Install build dependencies for static linking
+# Install build dependencies for static linking (no OpenSSL - using rustls)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     musl-tools \
     musl-dev \
-    pkg-config \
-    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Determine target triple based on platform
@@ -42,7 +40,6 @@ RUN rustup target add $(cat /target_triple)
 
 # Set up cargo for static linking
 ENV RUSTFLAGS="-C target-feature=+crt-static"
-ENV PKG_CONFIG_ALL_STATIC=1
 
 WORKDIR /build
 
