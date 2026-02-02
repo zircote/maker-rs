@@ -2,11 +2,12 @@
 //!
 //! Provides health status endpoint and optional Prometheus metrics.
 
+use rmcp::schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant, SystemTime};
 
 /// Health status of the MAKER server
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct HealthStatus {
     /// Overall health status
     pub status: HealthState,
@@ -24,7 +25,7 @@ pub struct HealthStatus {
 }
 
 /// Overall health state
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum HealthState {
     /// Server is healthy and operational
@@ -43,7 +44,7 @@ impl HealthState {
 }
 
 /// Health of individual components
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ComponentHealth {
     /// Voting subsystem status
     pub voting: ComponentStatus,
@@ -55,7 +56,7 @@ pub struct ComponentHealth {
 }
 
 /// Status of a single component
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ComponentStatus {
     /// Component is operational
     pub healthy: bool,
@@ -88,7 +89,7 @@ impl ComponentStatus {
 }
 
 /// Additional health metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct HealthMetadata {
     /// Total votes processed
     #[serde(skip_serializing_if = "Option::is_none")]

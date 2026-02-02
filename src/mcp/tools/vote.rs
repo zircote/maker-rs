@@ -140,8 +140,10 @@ fn create_matcher(matcher_type: Option<&str>) -> Result<Arc<dyn CandidateMatcher
         }
         #[cfg(feature = "code-matcher")]
         "code" => {
-            use crate::core::matchers::CodeMatcher;
-            Ok(Arc::new(CodeMatcher::default()))
+            use crate::core::matchers::code::{CodeLanguage, CodeMatcher};
+            Ok(Arc::new(CodeMatcher::with_default_threshold(
+                CodeLanguage::Rust,
+            )))
         }
         #[cfg(not(feature = "code-matcher"))]
         "code" => Err(VoteToolError::InvalidMatcher {
