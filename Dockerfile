@@ -7,15 +7,20 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Stage 1: Build environment
+# Stage 1: Build environment (Debian-based for latest Rust)
 # -----------------------------------------------------------------------------
-FROM --platform=$BUILDPLATFORM rust:1.85-alpine AS builder
+FROM --platform=$BUILDPLATFORM rust:latest AS builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-# Install build dependencies for static linking and cross-compilation
-RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
+# Install build dependencies for static linking
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    musl-tools \
+    musl-dev \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Determine target triple based on platform
 RUN case "$TARGETPLATFORM" in \
@@ -24,11 +29,12 @@ RUN case "$TARGETPLATFORM" in \
       *) echo "x86_64-unknown-linux-musl" > /target_triple ;; \
     esac
 
-# Install cross-compilation toolchain if needed
-RUN if [ "$BUILDPLATFORM" != "$TARGETPLATFORM" ]; then \
-      case "$TARGETPLATFORM" in \
-        "linux/arm64") apk add --no-cache gcc-aarch64-none-elf ;; \
-      esac \
+# Install cross-compilation toolchain for ARM64 if needed
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ] && [ "$BUILDPLATFORM" != "linux/arm64" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends \
+        gcc-aarch64-linux-gnu \
+        libc6-dev-arm64-cross \
+      && rm -rf /var/lib/apt/lists/* ; \
     fi
 
 # Add rust target
@@ -37,7 +43,6 @@ RUN rustup target add $(cat /target_triple)
 # Set up cargo for static linking
 ENV RUSTFLAGS="-C target-feature=+crt-static"
 ENV PKG_CONFIG_ALL_STATIC=1
-ENV OPENSSL_STATIC=1
 
 WORKDIR /build
 
@@ -61,8 +66,8 @@ COPY benches ./benches
 # Touch source files to invalidate the dummy build
 RUN touch src/lib.rs src/bin/*.rs
 
-# Build release binaries with all features
-RUN cargo build --release --features "code-matcher,prometheus" \
+# Build release binaries (without optional features for smaller binary)
+RUN cargo build --release \
     --target $(cat /target_triple) \
     --bin maker-mcp \
     --bin maker-cli
