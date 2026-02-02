@@ -968,7 +968,7 @@ mod embedding_matcher_tests {
         // Range [-1, 1]
         let d = vec![-1.0, -2.0, -3.0];
         let sim = cosine_similarity(&a, &d);
-        assert!(sim >= -1.0 && sim <= 1.0);
+        assert!((-1.0..=1.0).contains(&sim));
     }
 }
 

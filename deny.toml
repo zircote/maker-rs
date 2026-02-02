@@ -31,21 +31,8 @@ allow = [
     "MPL-2.0",  # Weak copyleft, file-level
 ]
 
-# Deny copyleft licenses that require derivative works to be open source
-deny = [
-    "GPL-1.0",
-    "GPL-2.0",
-    "GPL-3.0",
-    "AGPL-1.0",
-    "AGPL-3.0",
-    "LGPL-2.0",
-    "LGPL-2.1",
-    "LGPL-3.0",
-    "SSPL-1.0",
-    "CPAL-1.0",
-    "EUPL-1.1",
-    "EUPL-1.2",
-]
+# Note: Licenses not in the allow list are automatically denied
+# This implicitly blocks GPL, AGPL, LGPL, SSPL, CPAL, EUPL, etc.
 
 confidence-threshold = 0.93
 private = { ignore = true }

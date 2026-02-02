@@ -464,7 +464,7 @@ mod tests {
         for t in [0.90, 0.95, 0.99] {
             for s in [1, 10, 100, 1000, 100000] {
                 let k = estimator.recommended_k(t, s);
-                assert!(k >= 2 && k <= 10, "k={} out of bounds [2, 10]", k);
+                assert!((2..=10).contains(&k), "k={} out of bounds [2, 10]", k);
             }
         }
 
@@ -477,7 +477,11 @@ mod tests {
                 red_flagged: 0,
             });
             let k = estimator.recommended_k(0.95, 1000);
-            assert!(k >= 2 && k <= 10, "k={} out of bounds after observation", k);
+            assert!(
+                (2..=10).contains(&k),
+                "k={} out of bounds after observation",
+                k
+            );
         }
     }
 

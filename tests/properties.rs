@@ -391,7 +391,7 @@ proptest! {
             });
 
             let p = estimator.p_hat();
-            prop_assert!(p >= 0.51 && p <= 0.99,
+            prop_assert!((0.51..=0.99).contains(&p),
                 "p_hat={:.6} out of valid range after {} observations",
                 p, estimator.observation_count());
         }
@@ -1178,7 +1178,7 @@ proptest! {
         let stored_results = executor.results();
 
         // We should have at least as many results as we tried to execute
-        prop_assert!(stored_results.len() >= 1,
+        prop_assert!(!stored_results.is_empty(),
             "Should have at least 1 stored result, got {}", stored_results.len());
     }
 
@@ -1254,7 +1254,6 @@ proptest! {
             "k_used should equal configured k_margin");
         prop_assert!(result.metrics.samples_collected >= k_margin,
             "Should collect at least k samples");
-        prop_assert!(result.metrics.elapsed_ms > 0 || result.metrics.elapsed_ms == 0,
-            "elapsed_ms should be tracked"); // May be 0 for fast mock
+        // elapsed_ms is always valid (unsigned type, may be 0 for fast mock)
     }
 }

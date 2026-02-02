@@ -654,7 +654,7 @@ mod tests {
     }
 
     impl NamedMockClient {
-        fn new(name: &str, delay: Duration) -> Arc<dyn LlmClient> {
+        fn into_client(name: &str, delay: Duration) -> Arc<dyn LlmClient> {
             Arc::new(Self {
                 name: name.to_string(),
                 delay,
@@ -716,12 +716,12 @@ mod tests {
         EnsembleConfig::new(
             vec![
                 ModelSlot::new(
-                    NamedMockClient::new("model-a", Duration::from_millis(5)),
+                    NamedMockClient::into_client("model-a", Duration::from_millis(5)),
                     1.0,
                     CostTier::Cheap,
                 ),
                 ModelSlot::new(
-                    NamedMockClient::new("model-b", Duration::from_millis(5)),
+                    NamedMockClient::into_client("model-b", Duration::from_millis(5)),
                     1.0,
                     CostTier::Expensive,
                 ),
@@ -774,7 +774,7 @@ mod tests {
         let ensemble = EnsembleConfig::new(
             vec![
                 ModelSlot::new(
-                    NamedMockClient::new("good-model", Duration::from_millis(5)),
+                    NamedMockClient::into_client("good-model", Duration::from_millis(5)),
                     1.0,
                     CostTier::Cheap,
                 ),
@@ -825,12 +825,12 @@ mod tests {
         let ensemble = EnsembleConfig::new(
             vec![
                 ModelSlot::new(
-                    NamedMockClient::new("cheap", Duration::from_millis(5)),
+                    NamedMockClient::into_client("cheap", Duration::from_millis(5)),
                     1.0,
                     CostTier::Cheap,
                 ),
                 ModelSlot::new(
-                    NamedMockClient::new("expensive", Duration::from_millis(5)),
+                    NamedMockClient::into_client("expensive", Duration::from_millis(5)),
                     1.0,
                     CostTier::Expensive,
                 ),
@@ -856,7 +856,7 @@ mod tests {
         let ensemble = EnsembleConfig::new(
             vec![
                 ModelSlot::new(
-                    NamedMockClient::new("good", Duration::from_millis(5)),
+                    NamedMockClient::into_client("good", Duration::from_millis(5)),
                     1.0,
                     CostTier::Cheap,
                 ),

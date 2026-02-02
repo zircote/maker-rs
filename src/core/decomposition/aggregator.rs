@@ -1218,7 +1218,7 @@ mod tests {
         let discriminator = SolutionDiscriminator::new();
 
         // Level 2: Leaf node results (4 leaves)
-        let level2_results = vec![
+        let level2_results = [
             SubtaskResult::success(
                 "leaf-1-1".to_string(),
                 "result-1-1".to_string(),
@@ -1352,7 +1352,7 @@ mod tests {
 
             let aggregated = discriminator
                 .aggregate(&proposal, results, depth)
-                .expect(&format!("aggregation at depth {} should succeed", depth));
+                .unwrap_or_else(|_| panic!("aggregation at depth {} should succeed", depth));
 
             current_output = aggregated.output;
             current_state = aggregated.state;

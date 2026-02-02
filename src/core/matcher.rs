@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_exact_matcher_default() {
-        let m = ExactMatcher::default();
+        let m = ExactMatcher;
         assert_eq!(m.matcher_type(), "exact");
     }
 

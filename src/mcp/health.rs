@@ -403,8 +403,10 @@ mod tests {
 
     #[test]
     fn test_validate_config_invalid_k() {
-        let mut config = super::super::server::ServerConfig::default();
-        config.k_default = 0;
+        let config = super::super::server::ServerConfig {
+            k_default: 0,
+            ..Default::default()
+        };
         let result = validate_config(&config);
         assert!(result.is_err());
         assert!(result.unwrap_err()[0].contains("k_default"));
@@ -412,8 +414,10 @@ mod tests {
 
     #[test]
     fn test_validate_config_invalid_bounds() {
-        let mut config = super::super::server::ServerConfig::default();
-        config.k_bounds = (10, 5);
+        let config = super::super::server::ServerConfig {
+            k_bounds: (10, 5),
+            ..Default::default()
+        };
         let result = validate_config(&config);
         assert!(result.is_err());
         assert!(result.unwrap_err()[0].contains("k_bounds"));
@@ -421,12 +425,17 @@ mod tests {
 
     #[test]
     fn test_validate_config_invalid_ema() {
-        let mut config = super::super::server::ServerConfig::default();
-        config.ema_alpha = 0.0;
+        let config = super::super::server::ServerConfig {
+            ema_alpha: 0.0,
+            ..Default::default()
+        };
         let result = validate_config(&config);
         assert!(result.is_err());
 
-        config.ema_alpha = 1.0;
+        let config = super::super::server::ServerConfig {
+            ema_alpha: 1.0,
+            ..Default::default()
+        };
         let result = validate_config(&config);
         assert!(result.is_err());
     }

@@ -429,7 +429,7 @@ mod tests {
     }
 
     impl MockEnsembleClient {
-        fn new(name: &str, cost_tier: CostTier) -> Arc<dyn LlmClient> {
+        fn into_client(name: &str, cost_tier: CostTier) -> Arc<dyn LlmClient> {
             let cost = match cost_tier {
                 CostTier::Cheap => TokenCost::new(0.0001, 0.0002),
                 CostTier::Medium => TokenCost::new(0.001, 0.002),
@@ -471,12 +471,12 @@ mod tests {
         EnsembleConfig::new(
             vec![
                 ModelSlot::new(
-                    MockEnsembleClient::new("cheap-model", CostTier::Cheap),
+                    MockEnsembleClient::into_client("cheap-model", CostTier::Cheap),
                     1.0,
                     CostTier::Cheap,
                 ),
                 ModelSlot::new(
-                    MockEnsembleClient::new("expensive-model", CostTier::Expensive),
+                    MockEnsembleClient::into_client("expensive-model", CostTier::Expensive),
                     1.0,
                     CostTier::Expensive,
                 ),
@@ -490,17 +490,17 @@ mod tests {
         EnsembleConfig::new(
             vec![
                 ModelSlot::new(
-                    MockEnsembleClient::new("cheap", CostTier::Cheap),
+                    MockEnsembleClient::into_client("cheap", CostTier::Cheap),
                     1.0,
                     CostTier::Cheap,
                 ),
                 ModelSlot::new(
-                    MockEnsembleClient::new("medium", CostTier::Medium),
+                    MockEnsembleClient::into_client("medium", CostTier::Medium),
                     2.0,
                     CostTier::Medium,
                 ),
                 ModelSlot::new(
-                    MockEnsembleClient::new("expensive", CostTier::Expensive),
+                    MockEnsembleClient::into_client("expensive", CostTier::Expensive),
                     3.0,
                     CostTier::Expensive,
                 ),
@@ -526,7 +526,7 @@ mod tests {
         let models: Vec<ModelSlot> = (0..5)
             .map(|i| {
                 ModelSlot::new(
-                    MockEnsembleClient::new(&format!("model-{}", i), CostTier::Cheap),
+                    MockEnsembleClient::into_client(&format!("model-{}", i), CostTier::Cheap),
                     1.0,
                     CostTier::Cheap,
                 )
@@ -541,7 +541,7 @@ mod tests {
     #[test]
     fn test_reject_single_model() {
         let models = vec![ModelSlot::new(
-            MockEnsembleClient::new("solo", CostTier::Cheap),
+            MockEnsembleClient::into_client("solo", CostTier::Cheap),
             1.0,
             CostTier::Cheap,
         )];
@@ -558,7 +558,7 @@ mod tests {
         let models: Vec<ModelSlot> = (0..6)
             .map(|i| {
                 ModelSlot::new(
-                    MockEnsembleClient::new(&format!("model-{}", i), CostTier::Cheap),
+                    MockEnsembleClient::into_client(&format!("model-{}", i), CostTier::Cheap),
                     1.0,
                     CostTier::Cheap,
                 )
@@ -576,12 +576,12 @@ mod tests {
     fn test_reject_all_zero_weights_reliability() {
         let models = vec![
             ModelSlot::new(
-                MockEnsembleClient::new("a", CostTier::Cheap),
+                MockEnsembleClient::into_client("a", CostTier::Cheap),
                 0.0,
                 CostTier::Cheap,
             ),
             ModelSlot::new(
-                MockEnsembleClient::new("b", CostTier::Cheap),
+                MockEnsembleClient::into_client("b", CostTier::Cheap),
                 0.0,
                 CostTier::Cheap,
             ),
@@ -595,12 +595,12 @@ mod tests {
     fn test_zero_weights_ok_for_round_robin() {
         let models = vec![
             ModelSlot::new(
-                MockEnsembleClient::new("a", CostTier::Cheap),
+                MockEnsembleClient::into_client("a", CostTier::Cheap),
                 0.0,
                 CostTier::Cheap,
             ),
             ModelSlot::new(
-                MockEnsembleClient::new("b", CostTier::Cheap),
+                MockEnsembleClient::into_client("b", CostTier::Cheap),
                 0.0,
                 CostTier::Cheap,
             ),
@@ -633,7 +633,7 @@ mod tests {
         let models: Vec<ModelSlot> = (0..3)
             .map(|i| {
                 ModelSlot::new(
-                    MockEnsembleClient::new(&format!("m{}", i), CostTier::Cheap),
+                    MockEnsembleClient::into_client(&format!("m{}", i), CostTier::Cheap),
                     1.0,
                     CostTier::Cheap,
                 )
@@ -731,12 +731,12 @@ mod tests {
     fn test_reliability_weighted_favors_high_weight() {
         let models = vec![
             ModelSlot::new(
-                MockEnsembleClient::new("low-weight", CostTier::Cheap),
+                MockEnsembleClient::into_client("low-weight", CostTier::Cheap),
                 1.0,
                 CostTier::Cheap,
             ),
             ModelSlot::new(
-                MockEnsembleClient::new("high-weight", CostTier::Expensive),
+                MockEnsembleClient::into_client("high-weight", CostTier::Expensive),
                 9.0,
                 CostTier::Expensive,
             ),
@@ -768,12 +768,12 @@ mod tests {
     fn test_reliability_weighted_equal_weights() {
         let models = vec![
             ModelSlot::new(
-                MockEnsembleClient::new("a", CostTier::Cheap),
+                MockEnsembleClient::into_client("a", CostTier::Cheap),
                 1.0,
                 CostTier::Cheap,
             ),
             ModelSlot::new(
-                MockEnsembleClient::new("b", CostTier::Expensive),
+                MockEnsembleClient::into_client("b", CostTier::Expensive),
                 1.0,
                 CostTier::Expensive,
             ),
@@ -803,7 +803,7 @@ mod tests {
     #[test]
     fn test_model_slot_name() {
         let slot = ModelSlot::new(
-            MockEnsembleClient::new("test-model", CostTier::Medium),
+            MockEnsembleClient::into_client("test-model", CostTier::Medium),
             1.0,
             CostTier::Medium,
         );
@@ -813,7 +813,7 @@ mod tests {
     #[test]
     fn test_model_slot_negative_weight_clamped() {
         let slot = ModelSlot::new(
-            MockEnsembleClient::new("test", CostTier::Cheap),
+            MockEnsembleClient::into_client("test", CostTier::Cheap),
             -5.0,
             CostTier::Cheap,
         );
@@ -823,7 +823,7 @@ mod tests {
     #[test]
     fn test_model_slot_debug() {
         let slot = ModelSlot::new(
-            MockEnsembleClient::new("debug-test", CostTier::Cheap),
+            MockEnsembleClient::into_client("debug-test", CostTier::Cheap),
             2.5,
             CostTier::Cheap,
         );
@@ -1020,7 +1020,7 @@ mod tests {
         // the normal vote_with_margin path, not EnsembleConfig
         let result = EnsembleConfig::new(
             vec![ModelSlot::new(
-                MockEnsembleClient::new("solo", CostTier::Cheap),
+                MockEnsembleClient::into_client("solo", CostTier::Cheap),
                 1.0,
                 CostTier::Cheap,
             )],
