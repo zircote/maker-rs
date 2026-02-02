@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build environment
 # -----------------------------------------------------------------------------
-FROM --platform=$BUILDPLATFORM rust:1.84-alpine AS builder
+FROM --platform=$BUILDPLATFORM rust:1.85-alpine AS builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -85,9 +85,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /out/maker-mcp /usr/local/bin/
 COPY --from=builder /out/maker-cli /usr/local/bin/
 
-# Environment variables for LLM providers (set at runtime)
-ENV OPENAI_API_KEY=""
-ENV ANTHROPIC_API_KEY=""
+# Log level (API keys should be passed at runtime, not set here)
 ENV RUST_LOG="info"
 
 # Default to MCP server (override with --entrypoint for CLI)
