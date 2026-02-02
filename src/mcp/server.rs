@@ -4,9 +4,11 @@
 //! and routing tool calls to their respective handlers.
 
 use crate::llm::ensemble::EnsembleConfigRequest;
+use crate::mcp::health::HealthChecker;
 use crate::mcp::tools::{
     calibrate::{execute_calibrate, CalibrateRequest},
     configure::{apply_config_updates, Config, ConfigRequest, ConfigResponse, MatcherConfig},
+    health::{execute_health, HealthRequest},
     validate::{execute_validate, ValidateRequest},
     vote::{execute_vote, VoteRequest},
 };
@@ -67,12 +69,15 @@ impl Default for ServerConfig {
 pub struct ServerState {
     /// Current configuration
     pub config: RwLock<ServerConfig>,
+    /// Health checker for uptime and status
+    pub health_checker: HealthChecker,
 }
 
 impl Default for ServerState {
     fn default() -> Self {
         Self {
             config: RwLock::new(ServerConfig::default()),
+            health_checker: HealthChecker::new(),
         }
     }
 }
@@ -103,6 +108,7 @@ impl MakerServer {
         Self {
             state: Arc::new(ServerState {
                 config: RwLock::new(config),
+                health_checker: HealthChecker::new(),
             }),
             tool_router: Self::tool_router(),
         }
@@ -132,12 +138,20 @@ impl MakerServer {
     ) -> Result<CallToolResult, McpError> {
         let config = self.state.config.read().await;
 
-        match execute_vote(
-            &request,
-            config.k_default * 10, // max_samples
-            config.temperature_diversity,
-            Some(config.token_limit),
-        ) {
+        // Clone values needed for the blocking task
+        let max_samples = config.k_default * 10;
+        let temperature_diversity = config.temperature_diversity;
+        let token_limit = Some(config.token_limit);
+        drop(config); // Release the lock before blocking
+
+        // Run blocking vote execution on a dedicated thread pool
+        let result = tokio::task::spawn_blocking(move || {
+            execute_vote(&request, max_samples, temperature_diversity, token_limit)
+        })
+        .await
+        .map_err(|e| McpError::internal_error(format!("Vote task failed: {}", e), None))?;
+
+        match result {
             Ok(response) => {
                 let json = serde_json::to_string_pretty(&response)
                     .map_err(|e| McpError::internal_error(e.to_string(), None))?;
@@ -204,6 +218,23 @@ impl MakerServer {
             current_config: Config::from(&*config),
         };
 
+        let json = serde_json::to_string_pretty(&response)
+            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    /// Check server health status including uptime, version, and component health.
+    ///
+    /// Returns current health status and optional component-specific checks.
+    #[tool(
+        name = "maker/health",
+        description = "Check server health status including uptime and component health"
+    )]
+    async fn health(
+        &self,
+        Parameters(request): Parameters<HealthRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let response = execute_health(&request, &self.state.health_checker);
         let json = serde_json::to_string_pretty(&response)
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         Ok(CallToolResult::success(vec![Content::text(json)]))

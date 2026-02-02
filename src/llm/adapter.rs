@@ -102,7 +102,9 @@ pub fn create_provider(
             let api_key = config
                 .api_key
                 .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-                .ok_or("OpenAI requires OPENAI_API_KEY environment variable or api_key in config")?;
+                .ok_or(
+                    "OpenAI requires OPENAI_API_KEY environment variable or api_key in config",
+                )?;
             let model = config.model.as_deref().unwrap_or("gpt-4o-mini");
             let client = OpenAiClient::with_api_key(model, &api_key).map_err(|e| e.to_string())?;
             Ok(Some(Box::new(BlockingLlmAdapter::with_runtime(

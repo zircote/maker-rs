@@ -237,21 +237,24 @@ impl Metrics {
         ));
 
         // Decomposition metrics
-        output.push_str("# HELP maker_decompositions_proposed_total Total decomposition proposals\n");
+        output
+            .push_str("# HELP maker_decompositions_proposed_total Total decomposition proposals\n");
         output.push_str("# TYPE maker_decompositions_proposed_total counter\n");
         output.push_str(&format!(
             "maker_decompositions_proposed_total {}\n",
             self.decompositions_proposed
         ));
 
-        output.push_str("# HELP maker_decompositions_accepted_total Total decompositions accepted\n");
+        output
+            .push_str("# HELP maker_decompositions_accepted_total Total decompositions accepted\n");
         output.push_str("# TYPE maker_decompositions_accepted_total counter\n");
         output.push_str(&format!(
             "maker_decompositions_accepted_total {}\n",
             self.decompositions_accepted
         ));
 
-        output.push_str("# HELP maker_decompositions_rejected_total Total decompositions rejected\n");
+        output
+            .push_str("# HELP maker_decompositions_rejected_total Total decompositions rejected\n");
         output.push_str("# TYPE maker_decompositions_rejected_total counter\n");
         output.push_str(&format!(
             "maker_decompositions_rejected_total {}\n",

@@ -121,20 +121,22 @@
 **Description:** Build a command-line interface for MAKER operations without MCP.
 
 **Tasks:**
-- [ ] Create `src/bin/maker-cli.rs` with clap argument parsing
-- [ ] Implement `maker vote` subcommand with all vote options
-- [ ] Implement `maker validate` subcommand for red-flag checking
-- [ ] Implement `maker calibrate` subcommand for p estimation
-- [ ] Implement `maker config` subcommand for configuration management
-- [ ] Add `maker decompose` subcommand (once EPIC-011 complete)
-- [ ] Support JSON and human-readable output formats
-- [ ] Add shell completions generation
+- [x] Create `src/bin/maker-cli.rs` with clap argument parsing
+- [x] Implement `maker vote` subcommand with all vote options
+- [x] Implement `maker validate` subcommand for red-flag checking
+- [x] Implement `maker calibrate` subcommand for p estimation
+- [x] Implement `maker config` subcommand for configuration management
+- [x] Add `maker decompose` subcommand (once EPIC-011 complete)
+- [x] Support JSON and human-readable output formats
+- [x] Add shell completions generation
+- [x] Add `maker health` subcommand
+- [x] Add `--validate-config` global flag
 
 **Acceptance Criteria:**
-- [ ] CLI provides feature parity with MCP tools
-- [ ] `--help` documentation for all subcommands
-- [ ] Exit codes follow standard conventions (0=success, 1=error, 2=invalid args)
-- [ ] Integration tests for CLI invocations
+- [x] CLI provides feature parity with MCP tools
+- [x] `--help` documentation for all subcommands
+- [x] Exit codes follow standard conventions (0=success, 1=error, 2=invalid args)
+- [x] Integration tests for CLI invocations
 
 ---
 
@@ -157,41 +159,41 @@
 
 ---
 
-#### STORY-012-03: Claude Code Integration Testing
+#### STORY-012-03: Claude Code Integration Testing 🔄 IN PROGRESS
 
 **Description:** End-to-end integration tests with real Claude Code environment.
 
 **Tasks:**
-- [ ] Create integration test harness that launches maker-mcp in subprocess
-- [ ] Write tests for all 4 MCP tools with real stdio transport
-- [ ] Test configuration persistence across tool calls
+- [x] Create integration test harness that launches maker-mcp in subprocess
+- [x] Write tests for all 4 MCP tools with real stdio transport
+- [x] Test configuration persistence across tool calls
 - [ ] Test ensemble and adaptive k via MCP
-- [ ] Document Claude Desktop configuration steps
+- [x] Document Claude Desktop configuration steps
 
 **Acceptance Criteria:**
-- [ ] All MCP tools work via real stdio transport
-- [ ] Configuration changes persist correctly
+- [ ] All MCP tools work via real stdio transport (tests created, pending rmcp protocol investigation)
+- [x] Configuration changes persist correctly
 - [ ] Ensemble metrics reported in vote responses
-- [ ] Integration tests run in CI (with mock LLM responses)
+- [x] Integration tests run in CI (with mock LLM responses)
 
 ---
 
-#### STORY-012-04: Operational Tooling
+#### STORY-012-04: Operational Tooling ✅ COMPLETE
 
 **Description:** Add health checks, metrics export, and configuration validation.
 
 **Tasks:**
-- [ ] Implement `/health` check for MCP server
-- [ ] Add Prometheus metrics endpoint (optional feature flag)
-- [ ] Create configuration validation on startup
-- [ ] Add `--validate-config` flag to CLI
-- [ ] Implement graceful shutdown with in-flight request completion
+- [x] Implement `/health` check for MCP server
+- [ ] Add Prometheus metrics endpoint (optional feature flag) - deferred to future version
+- [x] Create configuration validation on startup
+- [x] Add `--validate-config` flag to CLI
+- [x] Implement graceful shutdown with in-flight request completion
 
 **Acceptance Criteria:**
-- [ ] Health check returns current state and version
-- [ ] Prometheus metrics include vote counts, latencies, red-flag rates
-- [ ] Invalid configuration fails fast with clear error message
-- [ ] Graceful shutdown completes in-flight requests before exit
+- [x] Health check returns current state and version
+- [ ] Prometheus metrics include vote counts, latencies, red-flag rates - deferred
+- [x] Invalid configuration fails fast with clear error message
+- [x] Graceful shutdown completes in-flight requests before exit
 
 ---
 
@@ -355,4 +357,4 @@ EPIC-013 (Extended Domain Support) — AFTER EPIC-011
 ---
 
 *Generated from PROJECT-CONTEXT.md and System Design Specification*
-*Last Updated: 2026-01-31*
+*Last Updated: 2026-02-01*

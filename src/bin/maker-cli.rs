@@ -6,6 +6,8 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use maker::core::{calculate_kmin, validate_token_length, vote_with_margin, RedFlag, VoteConfig};
 use maker::llm::adapter::{create_provider, ProviderConfig};
+use maker::mcp::health::{validate_config, HealthChecker};
+use maker::mcp::server::ServerConfig;
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read};
 use std::process::ExitCode;
@@ -24,8 +26,12 @@ struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
 
+    /// Validate configuration and exit
+    #[arg(long)]
+    validate_config: bool,
+
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 /// Output format for CLI responses
@@ -93,11 +99,11 @@ enum Commands {
         file: Option<String>,
 
         /// Target reliability (0.0-1.0)
-        #[arg(short, long, default_value = "0.95")]
+        #[arg(short = 'r', long, default_value = "0.95")]
         target_reliability: f64,
 
         /// Target step count
-        #[arg(short, long, default_value = "1000")]
+        #[arg(short = 's', long, default_value = "1000")]
         target_steps: usize,
     },
 
@@ -144,6 +150,17 @@ enum Commands {
         /// Shell to generate completions for
         #[arg(value_enum)]
         shell: Shell,
+    },
+
+    /// Check server health status
+    Health {
+        /// Check specific component (voting, config, provider)
+        #[arg(short, long)]
+        component: Option<String>,
+
+        /// Check LLM provider connectivity
+        #[arg(long)]
+        check_provider: bool,
     },
 }
 
@@ -258,7 +275,21 @@ fn main() -> ExitCode {
         .with_writer(io::stderr)
         .init();
 
-    let result = match cli.command {
+    // Handle --validate-config flag
+    if cli.validate_config {
+        return execute_validate_config();
+    }
+
+    // Require a subcommand if not validating config
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            eprintln!("Error: A subcommand is required. Use --help for usage.");
+            return ExitCode::from(2);
+        }
+    };
+
+    let result = match command {
         Commands::Vote {
             prompt,
             k_margin,
@@ -306,6 +337,11 @@ fn main() -> ExitCode {
             generate_completions(shell);
             Ok(())
         }
+
+        Commands::Health {
+            component,
+            check_provider,
+        } => execute_health(cli.format, component, check_provider),
     };
 
     match result {
@@ -564,6 +600,68 @@ fn generate_completions(shell: Shell) {
         Shell::PowerShell => ClapShell::PowerShell,
     };
     generate(shell, &mut cmd, "maker-cli", &mut io::stdout());
+}
+
+fn execute_validate_config() -> ExitCode {
+    let config = ServerConfig::default();
+
+    match validate_config(&config) {
+        Ok(()) => {
+            println!("Configuration is valid.");
+            ExitCode::SUCCESS
+        }
+        Err(errors) => {
+            eprintln!("Configuration errors:");
+            for error in errors {
+                eprintln!("  - {}", error);
+            }
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn execute_health(
+    format: OutputFormat,
+    component: Option<String>,
+    check_provider: bool,
+) -> Result<(), String> {
+    let checker = HealthChecker::new();
+
+    // Perform health check
+    let status = if check_provider {
+        // Try to create a provider to check connectivity
+        let provider_config = ProviderConfig::default();
+        let provider_healthy = create_provider("ollama", Some(provider_config)).is_ok();
+        checker.check_with_provider(provider_healthy)
+    } else {
+        checker.check()
+    };
+
+    // If specific component requested, filter the response
+    if let Some(comp) = component {
+        let component_status = match comp.to_lowercase().as_str() {
+            "voting" => Some(&status.components.voting),
+            "config" => Some(&status.components.config),
+            "provider" => status.components.llm_provider.as_ref(),
+            _ => {
+                return Err(format!(
+                    "Unknown component: {}. Use: voting, config, provider",
+                    comp
+                ))
+            }
+        };
+
+        if let Some(cs) = component_status {
+            return output_response(format, cs);
+        } else {
+            return Err(format!(
+                "Component '{}' not available (use --check-provider for provider status)",
+                comp
+            ));
+        }
+    }
+
+    output_response(format, &status)
 }
 
 // ============================================================================

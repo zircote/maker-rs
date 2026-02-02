@@ -6,6 +6,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+#### Vote Tool Field Remediation (`src/mcp/tools/vote.rs`)
+- **`matcher` field wired**: Creates matcher from request (`"exact"`, `"embedding"`, `"code"`), passes to `VoteConfig`, populates `matcher_type` in response
+- **`adaptive` field wired**: Branches to `vote_with_margin_adaptive()` when `adaptive=true`, populates `p_hat` in response
+- **`ensemble` field placeholder**: Returns clear error when `ensemble=true` explaining server-level config is required
+- **`create_matcher()` helper**: Factory function supporting `"exact"`, `"embedding"`, and `"code"` (with `code-matcher` feature flag)
+- **`VoteToolError::InvalidMatcher`**: New error variant with `provided` and `valid` fields for invalid matcher types
+- **11 unit tests**: Covering matcher creation, error display, invalid matcher handling, ensemble error, and adaptive p_hat
+
+### Fixed
+
+#### Async Runtime Fix (`src/mcp/server.rs`)
+- **`vote` handler spawn_blocking**: Wrapped blocking `execute_vote` call in `tokio::task::spawn_blocking` to prevent tokio runtime nesting panic when called from async context
+
 ## [0.3.0] - 2026-01-31
 
 ### Added

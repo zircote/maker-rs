@@ -14,6 +14,8 @@
 //! - `OPENAI_API_KEY` - OpenAI API key (for OpenAI provider)
 //! - `ANTHROPIC_API_KEY` - Anthropic API key (for Anthropic provider)
 
+use maker::mcp::health::validate_config;
+use maker::mcp::server::ServerConfig;
 use maker::mcp::MakerServer;
 use rmcp::{transport::stdio, ServiceExt};
 use tracing::{error, info, warn};
@@ -34,6 +36,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         version = env!("CARGO_PKG_VERSION"),
         "Starting MAKER MCP server"
     );
+
+    // Validate configuration on startup
+    let config = ServerConfig::default();
+    if let Err(errors) = validate_config(&config) {
+        for err in &errors {
+            error!(error = %err, "Configuration validation failed");
+        }
+        return Err(format!("Invalid configuration: {}", errors.join(", ")).into());
+    }
+    info!("Configuration validated successfully");
 
     // Create the server
     let server = MakerServer::new();
