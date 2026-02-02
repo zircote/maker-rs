@@ -3,37 +3,26 @@
 # =============================================================================
 # MAKER Docker Image
 # Multi-stage build for minimal container with maker-cli and maker-mcp
-# Supports: linux/amd64, linux/arm64
+# Supports: linux/amd64, linux/arm64 (native builds per platform)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Stage 1: Build environment (Debian-based for latest Rust)
+# Stage 1: Build environment (native build per platform)
 # -----------------------------------------------------------------------------
-FROM --platform=$BUILDPLATFORM rust:latest AS builder
+FROM rust:latest AS builder
 
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
+# Determine target triple based on current platform
+RUN case "$(uname -m)" in \
+      "x86_64")  echo "x86_64-unknown-linux-musl" > /target_triple ;; \
+      "aarch64") echo "aarch64-unknown-linux-musl" > /target_triple ;; \
+      *)         echo "x86_64-unknown-linux-musl" > /target_triple ;; \
+    esac
 
-# Install build dependencies for static linking (no OpenSSL - using rustls)
+# Install musl toolchain for static linking
 RUN apt-get update && apt-get install -y --no-install-recommends \
     musl-tools \
     musl-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Determine target triple based on platform
-RUN case "$TARGETPLATFORM" in \
-      "linux/amd64") echo "x86_64-unknown-linux-musl" > /target_triple ;; \
-      "linux/arm64") echo "aarch64-unknown-linux-musl" > /target_triple ;; \
-      *) echo "x86_64-unknown-linux-musl" > /target_triple ;; \
-    esac
-
-# Install cross-compilation toolchain for ARM64 if needed
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ] && [ "$BUILDPLATFORM" != "linux/arm64" ]; then \
-      apt-get update && apt-get install -y --no-install-recommends \
-        gcc-aarch64-linux-gnu \
-        libc6-dev-arm64-cross \
-      && rm -rf /var/lib/apt/lists/* ; \
-    fi
 
 # Add rust target
 RUN rustup target add $(cat /target_triple)
@@ -63,13 +52,13 @@ COPY benches ./benches
 # Touch source files to invalidate the dummy build
 RUN touch src/lib.rs src/bin/*.rs
 
-# Build release binaries (without optional features for smaller binary)
+# Build release binaries
 RUN cargo build --release \
     --target $(cat /target_triple) \
     --bin maker-mcp \
     --bin maker-cli
 
-# Strip binaries for minimal size and move to known location
+# Strip binaries for minimal size
 RUN mkdir -p /out && \
     cp /build/target/$(cat /target_triple)/release/maker-mcp /out/ && \
     cp /build/target/$(cat /target_triple)/release/maker-cli /out/ && \
@@ -87,7 +76,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /out/maker-mcp /usr/local/bin/
 COPY --from=builder /out/maker-cli /usr/local/bin/
 
-# Log level (API keys should be passed at runtime, not set here)
+# Log level (API keys should be passed at runtime)
 ENV RUST_LOG="info"
 
 # Default to MCP server (override with --entrypoint for CLI)

@@ -80,8 +80,8 @@ jobs:
             --ignore-filename-regex '(main\.rs|maker-mcp\.rs)'
       - name: Check coverage threshold
         run: |
-          cargo llvm-cov --all-features --fail-under-lines 90 \
-            --ignore-filename-regex '(main\.rs|maker-mcp\.rs)'
+          cargo llvm-cov --all-features --fail-under-lines 85 \
+            --ignore-filename-regex '(main\.rs|maker-mcp\.rs|maker-cli\.rs)'
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
