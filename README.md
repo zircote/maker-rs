@@ -79,6 +79,54 @@ cargo run --example hanoi_demo -- --disks 10 --accuracy 0.85
 cargo run --example custom_task
 ```
 
+## Research Validation
+
+`maker-rs` bridges academic research with production engineering. Here's how this implementation scores against the [original paper](https://arxiv.org/abs/2511.09030):
+
+### Scorecard
+
+| Criterion | Score | Assessment |
+|-----------|-------|------------|
+| **Algorithm Fidelity** | A+ | Exact k_min formula, SPRT voting, strict m=1 enforcement |
+| **Engineering Rigor** | A | Tokio concurrency, event sourcing, MCP integration |
+| **Completeness** | B | MVP lacks automated decomposition (future work) |
+| **Real-World Viability** | A- | Robust API handling; exact-match voting limits some use cases |
+
+### What's Implemented Well
+
+- **Strict m=1 Decomposition**: Micro-agents execute exactly one step with minimal context, matching the paper's core assertion that "smallest possible subtasks" enable scaling
+- **SPRT-Based Voting**: Uses actual Sequential Probability Ratio Test and Gambler's Ruin logic—not heuristic "best of 3"
+- **Dynamic k_min Calculation**: Computes margin from the paper's logarithmic formula based on target reliability (t) and task length (s)
+- **Red-Flagging as Primitive**: Treats validation as statistical necessity to decorrelate errors, discarding (never repairing) malformed outputs
+
+### Engineering Enhancements
+
+Beyond the paper's theoretical model:
+
+| Enhancement | Purpose |
+|-------------|---------|
+| **Tokio Runtime** | Massive I/O concurrency for parallel vote sampling across thousands of steps |
+| **Event Sourcing** | Real-time observability bridging theoretical probability with practical debugging |
+| **MCP Integration** | Transforms abstract state machine into consumable tools for Claude Code and other clients |
+| **Exponential Backoff** | Handles API rate limits (429s) with jitter and circuit breakers |
+
+### Known Limitations
+
+Deferred to post-MVP (acknowledged gaps vs. paper's full vision):
+
+- **Automated Decomposition**: The paper's "Insight Agents" for recursive task discovery are not yet implemented—decomposition is currently manual/deterministic
+- **Semantic Matching**: MVP defaults to exact string matching; embedding-based and AST-based matchers are available but less battle-tested
+
+### Practical Compromises
+
+| Paper Assumption | Implementation Reality |
+|------------------|----------------------|
+| Idealized sampling | Backoff, circuit breakers, retry budgets for real API constraints |
+| Red-flagging for decorrelation | Dual-purposed as security guardrail against prompt injection |
+| Unlimited parallelism | Configurable concurrency limits to respect provider quotas |
+
+Run `cargo test --test monte_carlo` to validate the statistical guarantees empirically.
+
 ## Architecture
 
 ```
