@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 400" width="700" height="400">
+  <rect width="700" height="400" rx="8" fill="#f8fafc"/>
+  <text x="350" y="30" font-family="sans-serif" font-size="18" font-weight="bold" fill="#0f172a" text-anchor="middle">Convergence: Samples Required by k-margin</text>
+  <path d="M 60 306 L 350 197 L 640 122" stroke="#3b82f6" stroke-width="3" fill="none"/>
+  <circle cx="60" cy="306" r="6" fill="#3b82f6"/>
+  <text x="60" y="380" font-family="sans-serif" font-size="10" fill="#1e293b" text-anchor="middle">k=1</text>
+  <text x="60" y="294" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">1.0</text>
+  <circle cx="350" cy="197" r="6" fill="#3b82f6"/>
+  <text x="350" y="380" font-family="sans-serif" font-size="10" fill="#1e293b" text-anchor="middle">k=2</text>
+  <text x="350" y="185" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">4.2</text>
+  <circle cx="640" cy="122" r="6" fill="#3b82f6"/>
+  <text x="640" y="380" font-family="sans-serif" font-size="10" fill="#1e293b" text-anchor="middle">k=3</text>
+  <text x="640" y="110" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">6.4</text>
+  <text x="20" y="200" font-family="sans-serif" font-size="12" fill="#64748b" text-anchor="middle" transform="rotate(-90 20 200)">Avg Samples</text>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <rect width="800" height="450" rx="8" fill="#f8fafc"/>
+  <text x="400" y="30" font-family="sans-serif" font-size="18" font-weight="bold" fill="#0f172a" text-anchor="middle">Accuracy Comparison: Voting vs Single Sample</text>
+  <text x="55" y="404" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="end">0%</text>
+  <line x1="60" y1="400" x2="740" y2="400" stroke="#e2e8f0" stroke-dasharray="2,2"/>
+  <text x="55" y="329" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="end">25%</text>
+  <line x1="60" y1="325" x2="740" y2="325" stroke="#e2e8f0" stroke-dasharray="2,2"/>
+  <text x="55" y="254" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="end">50%</text>
+  <line x1="60" y1="250" x2="740" y2="250" stroke="#e2e8f0" stroke-dasharray="2,2"/>
+  <text x="55" y="179" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="end">75%</text>
+  <line x1="60" y1="175" x2="740" y2="175" stroke="#e2e8f0" stroke-dasharray="2,2"/>
+  <text x="55" y="104" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="end">100%</text>
+  <line x1="60" y1="100" x2="740" y2="100" stroke="#e2e8f0" stroke-dasharray="2,2"/>
+  <rect x="650" y="50" width="15" height="15" fill="#3b82f6" rx="2"/>
+  <text x="670" y="62" font-family="sans-serif" font-size="12" fill="#1e293b">Voting</text>
+  <rect x="650" y="70" width="15" height="15" fill="#94a3b8" rx="2"/>
+  <text x="670" y="82" font-family="sans-serif" font-size="12" fill="#1e293b">Single</text>
+</svg>
