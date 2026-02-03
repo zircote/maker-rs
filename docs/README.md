@@ -1,6 +1,8 @@
 # MAKER Documentation
 
-Welcome to the MAKER Framework documentation. MAKER enables zero-error long-horizon LLM execution through SPRT voting, red-flag validation, and microagent orchestration.
+> ⚠️ **EXPERIMENTAL PROJECT** - This is a research experiment, not production software. See the [main README](../README.md) for details.
+
+Welcome to the MAKER Framework documentation. MAKER explores zero-error long-horizon LLM execution through SPRT voting, red-flag validation, and microagent orchestration.
 
 ## Quick Navigation
 

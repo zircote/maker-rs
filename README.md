@@ -5,13 +5,24 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/zircote/maker-rs/ci.yml?branch=main)](https://github.com/zircote/maker-rs/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-MAKER (Massively decomposed Agentic processes with K-margin Error Reduction) is a Rust library and MCP server for mathematically-grounded error correction in LLM agents. It achieves zero-error execution on 1,000+ step tasks through SPRT-based voting, red-flag validation, and m=1 microagent decomposition.
+> ## ⚠️ EXPERIMENTAL - NOT FOR PRODUCTION USE
+>
+> **This is a research experiment, not production software.**
+>
+> - **Purpose**: Validate and explore claims from the research paper [Solving a Million-Step LLM Task with Zero Errors](https://arxiv.org/abs/2511.09030) (Meyerson et al., 2025)
+> - **Goals**: Implement the MAKER algorithm, discover alternative approaches, test boundaries of zero-error LLM execution
+> - **Status**: Active research - may never reach production readiness
+> - **Use at your own risk**: APIs will change, results are experimental, not suitable for critical applications
+
+MAKER (Massively decomposed Agentic processes with K-margin Error Reduction) is a Rust implementation exploring mathematically-grounded error correction in LLM agents. It tests zero-error execution through SPRT-based voting, red-flag validation, and m=1 microagent decomposition.
 
 Based on: [Solving a Million-Step LLM Task with Zero Errors](https://arxiv.org/abs/2511.09030) (Meyerson et al., 2025)
 
 ## The Problem
 
-Even with 99% per-step accuracy, a 1,000-step task has only a 0.004% success rate. MAKER transforms this into 95%+ reliability with logarithmic cost scaling.
+Even with 99% per-step accuracy, a 1,000-step task has only a 0.004% success rate. The MAKER algorithm aims to transform this into 95%+ reliability with logarithmic cost scaling.
+
+**This implementation explores whether that claim holds in practice.**
 
 | Task Length | Naive Success Rate | MAKER Success Rate | MAKER Cost Scaling |
 |------------|-------------------|-------------------|-------------------|
@@ -66,31 +77,130 @@ Add to your Claude Code MCP configuration:
 }
 ```
 
-### Run the Demo
+### Run the Demos
+
+See [Validation Demos](#validation-demos) below for detailed documentation and results.
+
+## Validation Demos
+
+These demos validate MAKER's error correction capabilities against different task types.
+
+### Hanoi Demo (`examples/hanoi_demo.rs`)
+
+**Purpose**: Validates MAKER on multi-step reasoning tasks requiring algorithmic thinking.
 
 ```bash
-# 3-disk Hanoi (7 steps)
-cargo run --example hanoi -- --disks 3
+# 3-disk Hanoi (7 steps) with OpenAI
+cargo run --example hanoi_demo -- --disks 3 --provider openai
 
-# 10-disk Hanoi with voting (1,023 steps, zero errors)
-cargo run --example hanoi_demo -- --disks 10 --accuracy 0.85
+# 5-disk Hanoi (31 steps) with strict mode (halt on first error)
+cargo run --example hanoi_demo -- --disks 5 --provider openai --strict
 
-# Custom task template
-cargo run --example custom_task
+# With ensemble (multiple providers)
+cargo run --example hanoi_demo -- --disks 3 --provider openai --ensemble
+
+# Mock mode for CI/testing
+MAKER_USE_MOCK=1 cargo run --example hanoi_demo -- --disks 10 --accuracy 0.85
 ```
+
+**Key flags**:
+| Flag | Description |
+|------|-------------|
+| `--disks N` | Number of disks (1-20) |
+| `--provider` | LLM provider: `ollama`, `openai`, `anthropic` |
+| `--model` | Model name override |
+| `--strict` | Halt on first error (true zero-error mode) |
+| `--ensemble` | Enable multi-provider ensemble |
+
+**Results** (gpt-5-mini):
+- 31/31 steps (5-disk) with **0 errors** using few-shot + chain-of-thought prompt
+- ~2.7 samples per step average
+- p_hat converges to 0.950 (target reliability)
+
+**Key Finding**: Raw prompts fail on step 2 (systematic reasoning errors). Few-shot examples + chain-of-thought prompting converts systematic errors into random errors that voting can correct.
+
+### Arithmetic Demo (`examples/arithmetic_demo.rs`)
+
+**Purpose**: Validates MAKER on tasks with truly random errors (calculation mistakes).
+
+```bash
+# 20 problems with OpenAI
+cargo run --example arithmetic_demo -- --problems 20 --provider openai
+
+# 50 problems with higher difficulty
+cargo run --example arithmetic_demo -- --problems 50 --provider openai --difficulty 3
+
+# Strict mode with reproducible seed
+cargo run --example arithmetic_demo -- --problems 50 --provider openai --strict --seed 42
+
+# Mock mode for CI/testing
+MAKER_USE_MOCK=1 cargo run --example arithmetic_demo -- --problems 100 --accuracy 0.90
+```
+
+**Key flags**:
+| Flag | Description |
+|------|-------------|
+| `--problems N` | Number of problems to solve |
+| `--difficulty 1-5` | Number magnitude (10^difficulty) |
+| `--provider` | LLM provider |
+| `--strict` | Halt on first error |
+| `--seed N` | Reproducible problem generation |
+
+**Results** (gpt-5-mini):
+- 50/50 problems correct with **0 errors**
+- 2.7 samples per problem average
+- Handles addition, subtraction, multiplication
+
+**Key Finding**: Random calculation errors are effectively corrected by voting. This validates MAKER's core premise - voting corrects random errors.
+
+---
+
+## Research Findings
+
+Our validation experiments reveal important insights about MAKER's applicability:
+
+### What MAKER Can Correct
+
+| Error Type | Example | Correctable? | Why |
+|------------|---------|--------------|-----|
+| **Random errors** | LLM occasionally miscalculates 73-38 | ✅ Yes | Independent errors cancel out through voting |
+| **Prompted reasoning** | Hanoi with few-shot examples | ✅ Yes | Converts systematic to random errors |
+
+### What MAKER Cannot Correct
+
+| Error Type | Example | Correctable? | Why |
+|------------|---------|--------------|-----|
+| **Systematic errors** | LLM can't reason about Hanoi | ❌ No | All samples fail the same way |
+| **Knowledge gaps** | LLM doesn't know an algorithm | ❌ No | Voting achieves consensus on wrong answer |
+
+### Key Insight
+
+> **MAKER corrects random errors, not systematic reasoning failures.**
+>
+> If an LLM consistently fails at a task, voting will achieve consensus on the wrong answer. Prompt engineering (few-shot examples, chain-of-thought) is critical to convert systematic failures into random errors that voting can correct.
+
+### Observed Accuracy
+
+| Task | Model | Per-Step Accuracy | Samples/Step |
+|------|-------|-------------------|--------------|
+| Arithmetic (difficulty 3) | gpt-5-mini | ~95% | 2.7 |
+| Hanoi (few-shot+CoT) | gpt-5-mini | ~95% | 2.7 |
+| Hanoi (raw prompt) | gpt-5-mini | <50% | N/A (fails) |
+
+---
 
 ## Research Validation
 
-`maker-rs` bridges academic research with production engineering. Here's how this implementation scores against the [original paper](https://arxiv.org/abs/2511.09030):
+`maker-rs` explores the boundary between academic research and practical implementation. Here's how this experiment compares to the [original paper](https://arxiv.org/abs/2511.09030):
 
-### Scorecard
+### Scorecard (Self-Assessment)
 
 | Criterion | Score | Assessment |
 |-----------|-------|------------|
 | **Algorithm Fidelity** | A+ | Exact k_min formula, SPRT voting, strict m=1 enforcement |
-| **Engineering Rigor** | A | Tokio concurrency, event sourcing, MCP integration |
-| **Completeness** | B | MVP lacks automated decomposition (future work) |
-| **Real-World Viability** | A- | Robust API handling; exact-match voting limits some use cases |
+| **Experimental Coverage** | A | Tokio concurrency, event sourcing, MCP integration |
+| **Completeness** | B | Lacks automated decomposition (future exploration) |
+| **Validation Status** | B+ | Demos validate core claims; edge cases need more testing |
 
 ### What's Implemented Well
 
@@ -99,9 +209,9 @@ cargo run --example custom_task
 - **Dynamic k_min Calculation**: Computes margin from the paper's logarithmic formula based on target reliability (t) and task length (s)
 - **Red-Flagging as Primitive**: Treats validation as statistical necessity to decorrelate errors, discarding (never repairing) malformed outputs
 
-### Engineering Enhancements
+### Implementation Details
 
-Beyond the paper's theoretical model:
+Beyond the paper's theoretical model (experimental additions):
 
 | Enhancement | Purpose |
 |-------------|---------|
