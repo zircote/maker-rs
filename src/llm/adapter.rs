@@ -182,13 +182,13 @@ pub fn create_provider(
 /// * `Err(message)` - Error message describing the failure
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// use maker::llm::adapter::setup_provider_client;
 ///
 /// // Create Ollama provider with default model
 /// let client = setup_provider_client("ollama", None).unwrap();
 ///
-/// // Create OpenAI provider with specific model
+/// // Create OpenAI provider with specific model (requires OPENAI_API_KEY)
 /// let client = setup_provider_client("openai", Some("gpt-4".to_string())).unwrap();
 /// ```
 pub fn setup_provider_client(
