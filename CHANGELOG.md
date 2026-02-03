@@ -8,6 +8,37 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### GitHub Social Enhancement (2026-02-03)
+
+##### Social Preview Images (`.github/`)
+- **`social-preview.svg`**: Light mode social preview (1280x640) with MAKER branding
+- **`social-preview.jpg`**: JPG version for GitHub upload (66 KB)
+- **`social-preview-dark.svg`**: Dark mode variant
+- **`social-preview-dark.jpg`**: Dark mode JPG for manual upload
+
+##### README Infographics (`.github/`)
+- **`readme-infographic.svg`**: "How MAKER Works" architecture diagram
+- **`readme-infographic-dark.svg`**: Dark mode variant
+- **Theme-aware display**: Uses `<picture>` element for automatic light/dark switching
+
+##### README Badge Enhancements
+- **Rust badge**: `rust-1.75+` version indicator
+- **MCP badge**: Links to modelcontextprotocol.io
+- **arXiv badge**: Direct link to paper (2511.09030)
+
+##### GitHub Repository Metadata
+- **Description**: "Zero-error LLM execution via SPRT voting. Rust library and MCP server..."
+- **Topics**: `rust`, `llm`, `ai-agents`, `error-correction`, `mcp-server`, `sprt-voting`, `research`, `machine-learning`, `statistical-testing`, `microagents`
+
+### Changed
+
+#### README Documentation Corrections (2026-02-03)
+- **Completeness score**: Updated from `B` to `A-` (decomposition IS implemented)
+- **Architecture section**: Added decomposition module tree with all 11 files
+- **MCP Tools section**: Added `maker/decompose` tool documentation
+- **Known Limitations**: Removed false claim about missing decomposition
+- **Tool list**: Added `decompose` to MCP tools list
+
 #### Validation Demo Improvements (2026-02-03)
 
 ##### Arithmetic Demo (`examples/arithmetic_demo.rs`)
