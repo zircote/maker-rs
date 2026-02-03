@@ -31,6 +31,7 @@ tree-sitter-javascript = { version = "0.23", optional = true }
 
 [dev-dependencies]
 proptest = "1"
+rand = "0.8"
 wiremock = "0.6"
 
 [[bin]]
