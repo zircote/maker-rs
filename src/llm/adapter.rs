@@ -5,6 +5,16 @@
 //! blocking runtime.
 
 use crate::core::executor::{LlmClient as SyncLlmClient, LlmResponse as SyncLlmResponse};
+
+/// Valid LLM provider names supported by the framework.
+///
+/// Use this constant for validation and help messages to ensure consistency.
+pub const VALID_PROVIDERS: &[&str] = &["ollama", "openai", "anthropic"];
+
+/// Returns a comma-separated string of valid provider names for error messages.
+pub fn valid_providers_str() -> String {
+    VALID_PROVIDERS.join(", ")
+}
 use crate::llm::anthropic::AnthropicClient;
 use crate::llm::ollama::OllamaClient;
 use crate::llm::openai::OpenAiClient;
@@ -131,7 +141,7 @@ pub fn create_provider(
                 .ok_or(
                     "OpenAI requires OPENAI_API_KEY environment variable or api_key in config",
                 )?;
-            let model = config.model.as_deref().unwrap_or("gpt-4o-mini");
+            let model = config.model.as_deref().unwrap_or("gpt-5-mini");
             let client = OpenAiClient::with_api_key(model, &api_key).map_err(|e| e.to_string())?;
             Ok(Some(Box::new(BlockingLlmAdapter::with_runtime(
                 client, runtime,
@@ -152,6 +162,52 @@ pub fn create_provider(
             ))))
         }
         _ => Ok(None),
+    }
+}
+
+/// Shared helper to setup a provider client with error handling
+///
+/// This consolidates the common pattern of:
+/// 1. Validate provider name
+/// 2. Create ProviderConfig
+/// 3. Call create_provider()
+/// 4. Handle Ok(Some)/Ok(None)/Err cases
+///
+/// # Arguments
+/// * `provider_name` - Provider name: "ollama", "openai", "anthropic"
+/// * `model` - Optional model name override
+///
+/// # Returns
+/// * `Ok(client)` - Successfully created provider client
+/// * `Err(message)` - Error message describing the failure
+///
+/// # Examples
+/// ```
+/// use maker::llm::adapter::setup_provider_client;
+///
+/// // Create Ollama provider with default model
+/// let client = setup_provider_client("ollama", None).unwrap();
+///
+/// // Create OpenAI provider with specific model
+/// let client = setup_provider_client("openai", Some("gpt-4".to_string())).unwrap();
+/// ```
+pub fn setup_provider_client(
+    provider_name: &str,
+    model: Option<String>,
+) -> Result<Box<dyn SyncLlmClient>, String> {
+    let provider_config = ProviderConfig {
+        model,
+        ..Default::default()
+    };
+
+    match create_provider(provider_name, Some(provider_config)) {
+        Ok(Some(client)) => Ok(client),
+        Ok(None) => Err(format!(
+            "Unknown provider: '{}'. Valid options: {}",
+            provider_name,
+            valid_providers_str()
+        )),
+        Err(e) => Err(format!("Failed to create provider '{}': {}", provider_name, e)),
     }
 }
 

@@ -111,47 +111,53 @@ impl OpenAiClient {
         }
     }
 
-    /// Check if the model is a reasoning model (GPT-5/o-series)
+    /// Check if the model is a reasoning model (o-series only)
     ///
-    /// Reasoning models don't support temperature, top_p, frequency_penalty,
-    /// presence_penalty, logit_bias, logprobs, or n parameters.
-    /// They use `reasoning` config and `max_completion_tokens` instead.
+    /// Currently only o1/o3 series are confirmed reasoning models.
+    /// These models don't support temperature parameter - they use
+    /// max_completion_tokens and have fixed reasoning behavior.
+    ///
+    /// Note: gpt-5 family detection disabled until API is confirmed.
     pub fn is_reasoning_model(model: &str) -> bool {
         let model_lower = model.to_lowercase();
 
-        // GPT-5 family
-        model_lower.starts_with("gpt-5")
-            // o-series reasoning models
-            || model_lower.starts_with("o1")
-            || model_lower.starts_with("o3")
+        // o-series reasoning models only (confirmed API behavior)
+        // gpt-5 detection disabled - API not yet confirmed
+        model_lower.starts_with("o1") || model_lower.starts_with("o3")
+    }
+
+    /// Check if the model requires fixed temperature (doesn't support custom values)
+    ///
+    /// Some models only support the default temperature (1.0) and will error
+    /// if you try to set a custom value. This includes:
+    /// - o-series reasoning models (o1, o3)
+    /// - gpt-5-mini and gpt-5-nano (lightweight models)
+    pub fn requires_fixed_temperature(model: &str) -> bool {
+        let model_lower = model.to_lowercase();
+
+        // Reasoning models don't support temperature at all
+        if Self::is_reasoning_model(model) {
+            return true;
+        }
+
+        // gpt-5-mini and gpt-5-nano only support default temperature
+        model_lower.starts_with("gpt-5-mini") || model_lower.starts_with("gpt-5-nano")
     }
 }
 
-/// Reasoning configuration for GPT-5/o-series models
-#[derive(Debug, Serialize)]
-struct ReasoningConfig {
-    /// Reasoning effort: "minimal", "medium", or "high"
-    effort: String,
-}
-
-impl ReasoningConfig {
-    /// Map temperature to reasoning effort
-    ///
-    /// Since reasoning models don't support temperature, we map:
-    /// - T < 0.3 → "minimal" (more deterministic)
-    /// - T < 0.7 → "medium" (balanced)
-    /// - T >= 0.7 → "high" (more exploratory)
-    fn from_temperature(temperature: f64) -> Self {
-        let effort = if temperature < 0.3 {
-            "minimal"
-        } else if temperature < 0.7 {
-            "medium"
-        } else {
-            "high"
-        };
-        Self {
-            effort: effort.to_string(),
-        }
+/// Map temperature to reasoning_effort for o-series models
+///
+/// Since reasoning models don't support temperature, we map:
+/// - T < 0.3 → "low" (faster, fewer tokens)
+/// - T < 0.7 → "medium" (balanced)
+/// - T >= 0.7 → "high" (deeper reasoning)
+fn temperature_to_reasoning_effort(temperature: f64) -> &'static str {
+    if temperature < 0.3 {
+        "low"
+    } else if temperature < 0.7 {
+        "medium"
+    } else {
+        "high"
     }
 }
 
@@ -222,8 +228,17 @@ impl LlmClient for OpenAiClient {
 
             // Build appropriate request based on model type
             let request_body: serde_json::Value = if Self::is_reasoning_model(&self.model) {
-                // Reasoning models (gpt-5, o-series): no temperature parameter
-                // These models handle reasoning internally
+                // Reasoning models (o-series): use reasoning_effort instead of temperature
+                // Map temperature to reasoning effort level
+                let effort = temperature_to_reasoning_effort(temperature);
+                serde_json::json!({
+                    "model": self.model,
+                    "messages": messages,
+                    "reasoning_effort": effort
+                })
+            } else if Self::requires_fixed_temperature(&self.model) {
+                // Models that only support default temperature (gpt-5-mini, gpt-5-nano)
+                // Omit temperature parameter entirely
                 serde_json::json!({
                     "model": self.model,
                     "messages": messages
@@ -352,14 +367,6 @@ mod tests {
     // ==========================================
 
     #[test]
-    fn test_is_reasoning_model_gpt5() {
-        assert!(OpenAiClient::is_reasoning_model("gpt-5"));
-        assert!(OpenAiClient::is_reasoning_model("gpt-5-mini"));
-        assert!(OpenAiClient::is_reasoning_model("gpt-5-nano"));
-        assert!(OpenAiClient::is_reasoning_model("GPT-5")); // Case insensitive
-    }
-
-    #[test]
     fn test_is_reasoning_model_o_series() {
         assert!(OpenAiClient::is_reasoning_model("o1"));
         assert!(OpenAiClient::is_reasoning_model("o1-mini"));
@@ -375,16 +382,33 @@ mod tests {
         assert!(!OpenAiClient::is_reasoning_model("gpt-4o-mini"));
         assert!(!OpenAiClient::is_reasoning_model("gpt-3.5-turbo"));
         assert!(!OpenAiClient::is_reasoning_model("gpt-4-turbo"));
+        // gpt-5 detection disabled until API confirmed
+        assert!(!OpenAiClient::is_reasoning_model("gpt-5"));
+        assert!(!OpenAiClient::is_reasoning_model("gpt-5.2"));
     }
 
     #[test]
-    fn test_reasoning_config_from_temperature() {
-        assert_eq!(ReasoningConfig::from_temperature(0.0).effort, "minimal");
-        assert_eq!(ReasoningConfig::from_temperature(0.2).effort, "minimal");
-        assert_eq!(ReasoningConfig::from_temperature(0.3).effort, "medium");
-        assert_eq!(ReasoningConfig::from_temperature(0.5).effort, "medium");
-        assert_eq!(ReasoningConfig::from_temperature(0.7).effort, "high");
-        assert_eq!(ReasoningConfig::from_temperature(1.0).effort, "high");
+    fn test_requires_fixed_temperature() {
+        // Reasoning models require fixed temperature
+        assert!(OpenAiClient::requires_fixed_temperature("o1"));
+        assert!(OpenAiClient::requires_fixed_temperature("o3-mini"));
+        // gpt-5-mini and gpt-5-nano only support default temperature
+        assert!(OpenAiClient::requires_fixed_temperature("gpt-5-mini"));
+        assert!(OpenAiClient::requires_fixed_temperature("gpt-5-nano"));
+        // Standard models support custom temperature
+        assert!(!OpenAiClient::requires_fixed_temperature("gpt-4o"));
+        assert!(!OpenAiClient::requires_fixed_temperature("gpt-4o-mini"));
+        assert!(!OpenAiClient::requires_fixed_temperature("gpt-5")); // Full gpt-5 supports temperature
+    }
+
+    #[test]
+    fn test_temperature_to_reasoning_effort() {
+        assert_eq!(temperature_to_reasoning_effort(0.0), "low");
+        assert_eq!(temperature_to_reasoning_effort(0.2), "low");
+        assert_eq!(temperature_to_reasoning_effort(0.3), "medium");
+        assert_eq!(temperature_to_reasoning_effort(0.5), "medium");
+        assert_eq!(temperature_to_reasoning_effort(0.7), "high");
+        assert_eq!(temperature_to_reasoning_effort(1.0), "high");
     }
 
     #[test]
@@ -700,11 +724,10 @@ mod tests {
     async fn test_generate_reasoning_model_sends_reasoning_config() {
         let server = wiremock::MockServer::start().await;
 
-        // Verify request contains "reasoning" and "effort", not "temperature"
+        // Verify request contains "reasoning_effort", not "temperature"
         wiremock::Mock::given(wiremock::matchers::method("POST"))
             .and(wiremock::matchers::path("/chat/completions"))
-            .and(wiremock::matchers::body_string_contains("reasoning"))
-            .and(wiremock::matchers::body_string_contains("effort"))
+            .and(wiremock::matchers::body_string_contains("reasoning_effort"))
             .respond_with(
                 wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
                     "choices": [{"message": {"role": "assistant", "content": "4"}}],
@@ -714,7 +737,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let client = OpenAiClient::with_api_key("gpt-5", "test-key")
+        // Use o1 (actual reasoning model) - gpt-5 is NOT a reasoning model
+        let client = OpenAiClient::with_api_key("o1", "test-key")
             .unwrap()
             .with_base_url(&server.uri());
 
