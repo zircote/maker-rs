@@ -257,11 +257,12 @@ impl MakerServer {
         drop(config); // Release the lock before blocking
 
         // Run blocking decompose execution on a dedicated thread pool
-        let result = tokio::task::spawn_blocking(move || {
-            execute_decompose(&request, &default_provider)
-        })
-        .await
-        .map_err(|e| McpError::internal_error(format!("Decompose task failed: {}", e), None))?;
+        let result =
+            tokio::task::spawn_blocking(move || execute_decompose(&request, &default_provider))
+                .await
+                .map_err(|e| {
+                    McpError::internal_error(format!("Decompose task failed: {}", e), None)
+                })?;
 
         match result {
             Ok(response) => {

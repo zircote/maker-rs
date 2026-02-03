@@ -209,7 +209,7 @@ fn functional_test_real_llm_error_correction() {
     // The key assertion: voting should do at least as well, ideally better
     println!(
         "\nVoting produced {} more correct answers than single sampling",
-        total_voted_correct as i32 - total_single_correct as i32
+        total_voted_correct - total_single_correct
     );
 
     // We expect voting to be at least as good

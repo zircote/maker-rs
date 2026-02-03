@@ -54,13 +54,11 @@ fn run_cli(args: &[&str]) -> Output {
 /// Check if Ollama is available by attempting a simple health check
 fn is_ollama_available() -> bool {
     // Try to connect to Ollama's default endpoint
-    match std::net::TcpStream::connect_timeout(
+    std::net::TcpStream::connect_timeout(
         &"127.0.0.1:11434".parse().unwrap(),
         std::time::Duration::from_secs(1),
-    ) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    )
+    .is_ok()
 }
 
 // ============================================================================
@@ -101,15 +99,18 @@ struct ConfigResponse {
     k_margin: usize,
     provider: String,
     matcher: String,
-    adaptive: bool,
-    max_samples: usize,
+    #[serde(rename = "adaptive")]
+    _adaptive: bool,
+    #[serde(rename = "max_samples")]
+    _max_samples: usize,
 }
 
 #[derive(Debug, Deserialize)]
 struct HealthResponse {
-    status: String,
-    #[allow(dead_code)]
-    version: String,
+    #[serde(rename = "status")]
+    _status: String,
+    #[serde(rename = "version")]
+    _version: String,
     components: HealthComponents,
 }
 

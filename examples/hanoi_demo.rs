@@ -163,7 +163,7 @@ impl EnsembleClient {
 impl LlmClient for EnsembleClient {
     fn generate(&self, prompt: &str, temperature: f64) -> Result<LlmResponse, String> {
         let count = self.counter.fetch_add(1, Ordering::SeqCst);
-        if count % 2 == 0 {
+        if count.is_multiple_of(2) {
             self.client_a.generate(prompt, temperature)
         } else {
             self.client_b.generate(prompt, temperature)
@@ -535,6 +535,7 @@ impl HanoiTowers {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_llm_mode(
     n_disks: u8,
     solution: &[String],

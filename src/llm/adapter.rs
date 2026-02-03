@@ -207,7 +207,10 @@ pub fn setup_provider_client(
             provider_name,
             valid_providers_str()
         )),
-        Err(e) => Err(format!("Failed to create provider '{}': {}", provider_name, e)),
+        Err(e) => Err(format!(
+            "Failed to create provider '{}': {}",
+            provider_name, e
+        )),
     }
 }
 

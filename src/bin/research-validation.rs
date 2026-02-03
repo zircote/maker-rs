@@ -523,7 +523,7 @@ fn run_accuracy_experiment(ctx: &ExperimentContext) -> Vec<TrialResult> {
                     };
 
                     results.push(TrialResult {
-                        trial_id: trial_id,
+                        trial_id,
                         config_id: config_id.clone(),
                         k_margin: k,
                         base_accuracy: 0.0, // Unknown for live mode
@@ -832,7 +832,7 @@ impl LlmClient for EnsembleClient {
         let count = self
             .counter
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        if count % 2 == 0 {
+        if count.is_multiple_of(2) {
             self.client_a.generate(prompt, temperature)
         } else {
             self.client_b.generate(prompt, temperature)
@@ -1667,7 +1667,7 @@ fn generate_k_reliability_svg(path: &PathBuf) -> std::io::Result<()> {
         // Reliability per step with k-margin voting
         let r: f64 = (1.0 - p) / p;
         let reliability_per_step: f64 = 1.0 - r.powi(k as i32);
-        let task_reliability: f64 = reliability_per_step.powi(s as i32);
+        let task_reliability: f64 = reliability_per_step.powi(s);
 
         let x = margin + ((k - 1) * chart_width / 9);
         let y = margin + 40 + chart_height - ((task_reliability) * chart_height as f64) as usize;
@@ -1689,7 +1689,7 @@ fn generate_k_reliability_svg(path: &PathBuf) -> std::io::Result<()> {
     for k in 1..=10 {
         let r: f64 = (1.0 - p) / p;
         let reliability_per_step: f64 = 1.0 - r.powi(k as i32);
-        let task_reliability: f64 = reliability_per_step.powi(s as i32);
+        let task_reliability: f64 = reliability_per_step.powi(s);
 
         let x = margin + ((k - 1) * chart_width / 9);
         let y = margin + 40 + chart_height - ((task_reliability) * chart_height as f64) as usize;
@@ -1772,13 +1772,11 @@ fn main() -> ExitCode {
         2 => "debug",
         _ => "trace",
     };
-    if let Err(_) = tracing_subscriber::fmt()
+    // Ignore error if subscriber already initialized
+    let _ = tracing_subscriber::fmt()
         .with_env_filter(log_level)
         .with_writer(std::io::stderr)
-        .try_init()
-    {
-        // Subscriber already initialized
-    }
+        .try_init();
 
     let ctx = match ExperimentContext::new(&cli) {
         Ok(ctx) => ctx,

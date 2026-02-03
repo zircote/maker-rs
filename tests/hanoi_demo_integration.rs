@@ -220,7 +220,7 @@ fn test_adaptive_voting_increases_k_on_disagreement() {
 
     // k should adjust based on observed accuracy
     assert!(
-        k_after >= 1 && k_after <= 10,
+        (1..=10).contains(&k_after),
         "k should be within bounds: {}",
         k_after
     );

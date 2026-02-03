@@ -91,7 +91,7 @@ impl MatcherFactory {
     /// Requires the `code-matcher` feature.
     #[cfg(feature = "code-matcher")]
     pub fn create_code(&self, language: CodeLanguage) -> Arc<dyn CandidateMatcher> {
-        Arc::new(CodeMatcher::new(language))
+        Arc::new(CodeMatcher::with_default_threshold(language))
     }
 
     /// Creates a code matcher with auto-detected language.
@@ -100,7 +100,7 @@ impl MatcherFactory {
     #[cfg(feature = "code-matcher")]
     pub fn create_code_auto(&self, content: &str) -> Arc<dyn CandidateMatcher> {
         let language = detect_language(content);
-        Arc::new(CodeMatcher::new(language))
+        Arc::new(CodeMatcher::with_default_threshold(language))
     }
 
     /// Creates a matcher based on preset and optional embedding client.
@@ -126,7 +126,7 @@ impl MatcherFactory {
             PreferredMatcher::Code => {
                 #[cfg(feature = "code-matcher")]
                 {
-                    Arc::new(CodeMatcher::new(CodeLanguage::Rust))
+                    Arc::new(CodeMatcher::with_default_threshold(CodeLanguage::Rust))
                 }
                 #[cfg(not(feature = "code-matcher"))]
                 {

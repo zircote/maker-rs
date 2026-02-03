@@ -419,6 +419,7 @@ fn main() -> ExitCode {
 // Command Implementations
 // ============================================================================
 
+#[allow(clippy::too_many_arguments)]
 fn execute_vote(
     format: OutputFormat,
     prompt: Option<String>,
