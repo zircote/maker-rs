@@ -56,48 +56,45 @@ Sub-domain: Massively Decomposed Agentic Processes (MDAPs) for zero-error long-h
 - **Primary Source**: Arxiv paper [2511.09030](https://arxiv.org/abs/2511.09030) — full algorithmic specification
 - **System Design Specification**: `docs/SystemDesignSpecification.txt` — architectural philosophy and implementation standards
 - **Technical Manual**: `docs/project/technical-implementation-manual.txt` — implementation guidance
-- **Existing Implementation**: v0.2.0 codebase with core voting, semantic matching, adaptive k, and ensemble support
+- **Existing Implementation**: v0.3.0 codebase with core voting, semantic matching, adaptive k, ensemble support, recursive decomposition, domain decomposers, and standalone CLI
 
 ## Desired Outcomes
 
-### Completed (v0.1.0 + v0.2.0)
+### Completed (v0.1.0 + v0.2.0 + v0.3.0)
 
 - [x] **Core MAKER Library**: k_min calculation, VoteRace, RedFlagValidator, vote_with_margin()
-- [x] **MCP Server**: 4 tools (vote, validate, calibrate, configure) via rmcp
+- [x] **MCP Server**: 5 tools (vote, validate, calibrate, configure, decompose) via rmcp
 - [x] **Semantic Matching**: ExactMatcher, EmbeddingMatcher, CodeMatcher (tree-sitter)
 - [x] **Adaptive K-Margin**: KEstimator with EMA-based p-hat estimation
 - [x] **Multi-Model Ensemble**: RoundRobin, CostAware, ReliabilityWeighted strategies
 - [x] **Benchmark Suite**: Coding, math/logic, data analysis, ensemble comparison
-- [x] **456+ Tests**: Unit, integration, property-based (proptest)
+- [x] **768+ Tests**: Unit, integration, property-based (proptest)
+- [x] **Recursive Decomposition Framework**: Full Section 7 implementation
+  - [x] Decomposition Agents (LlmDecompositionAgent)
+  - [x] Decomposition Discriminators (vote on proposals)
+  - [x] Problem Solver Agents (LeafNodeExecutor)
+  - [x] Solution Discriminators (aggregator)
+  - [x] Recursive Orchestrator (full pipeline)
+- [x] **Domain Decomposers**: Coding (AST-based), ML Pipeline, Data Analysis (ETL)
+- [x] **Standalone CLI** (`maker-cli`): Full feature parity with MCP tools
+- [x] **Multi-file Orchestration**: FileSystemState with locking and atomic commits
+- [x] **Operational Tooling**: Health checks, metrics, configuration validation
+- [x] **Validation Demos**: Hanoi (few-shot+CoT), Arithmetic (random error correction)
 
-### Phase 3: v0.3.0 — Recursive Decomposition & Production Hardening
+### Phase 4: Future Work — Production Validation & Real-World Testing
 
-#### Recursive Decomposition (Full Automation)
+#### Remaining Production Hardening
 
-Implement the complete insight/execution agent separation as specified in SystemDesignSpecification.txt Section 7:
-
-- [ ] **Decomposition Agents**: Split tasks into simpler subtasks with composition functions
-- [ ] **Decomposition Discriminators**: Vote on proposed decomposition strategies using first-to-ahead-by-k
-- [ ] **Problem Solver Agents**: Execute atomic (m=1) leaf nodes
-- [ ] **Solution Discriminators**: Aggregate results into final output via voted composition
-- [ ] **Recursive Loop**: Full pipeline from high-level command to atomic execution to reassembly
-- [ ] **TaskDecomposer trait extensions**: Domain-specific decomposition strategies
-
-#### Production Hardening (CLI + MCP)
-
-- [ ] **Standalone CLI (`maker-cli`)**: Command-line interface for MAKER operations without MCP
 - [ ] **Async Executor Integration**: Connect async LlmClient to synchronous voting executor
-- [ ] **Real-world Claude Code Testing**: End-to-end integration tests with Claude Code
+- [ ] **Real-world Claude Code Testing**: Comprehensive end-to-end integration tests
 - [ ] **Performance Optimization**: Parallel sampling latency, memory efficiency
-- [ ] **Operational Tooling**: Health checks, metrics export, configuration validation
+- [ ] **Decomposition Real-World Validation**: Test LLM-driven decomposition across diverse task types
 
-#### Extended Domain Support (All Three Domains)
+#### Research Validation
 
-- [ ] **Coding Domain Decomposer**: AST-based task decomposition for real code generation
-- [ ] **ML Pipeline Decomposer**: Experiment orchestration, hyperparameter search decomposition
-- [ ] **Data Analysis Decomposer**: ETL pipeline generation with validation steps
-- [ ] **Domain-Specific Red Flags**: Syntax validation, schema enforcement, type checking
-- [ ] **Multi-file Orchestration**: State passing across file boundaries
+- [ ] **Extended Hanoi Testing**: Test beyond 5 disks with live LLMs
+- [ ] **Systematic vs Random Error Analysis**: More validation of MAKER boundaries
+- [ ] **Cost Model Validation**: Verify Θ(s ln s) scaling with real providers
 
 ### Quality Targets
 
@@ -120,18 +117,18 @@ Implement the complete insight/execution agent separation as specified in System
 
 ### System Design Specification Alignment
 
-The v0.3.0 phase implements the remaining sections of the System Design Specification:
+All major sections of the System Design Specification are now implemented:
 
-| Spec Section | v0.1.0/v0.2.0 Status | v0.3.0 Target |
-|--------------|---------------------|---------------|
-| 1. Architectural Philosophy (MDAPs) | ✅ Core concepts | ✅ Complete |
-| 2. Micro-Role Protocol (m=1) | ✅ TaskOrchestrator | ✅ Complete |
-| 3. Context Shielding (φ function) | ✅ Minimal context prompts | Enhanced domain-specific |
-| 4. I/O Contracts (State Passing) | ✅ StrictAgentOutput | ✅ Complete |
-| 5. First-to-Ahead-by-k Voting | ✅ VoteRace, vote_with_margin | ✅ Complete |
-| 6. Red-Flagging Protocols | ✅ RedFlagValidator | Extended domain-specific |
-| 7. Recursive Architecture | ⚠️ Manual decomposition | **Full automation** |
-| 8. Economic Analysis | ✅ Θ(s ln s) validated | ✅ Complete |
+| Spec Section | Status | Implementation |
+|--------------|--------|----------------|
+| 1. Architectural Philosophy (MDAPs) | ✅ Complete | Core architecture established |
+| 2. Micro-Role Protocol (m=1) | ✅ Complete | TaskOrchestrator enforces m=1 |
+| 3. Context Shielding (φ function) | ✅ Complete | Minimal context prompts, domain-specific decomposers |
+| 4. I/O Contracts (State Passing) | ✅ Complete | StrictAgentOutput, FileSystemState |
+| 5. First-to-Ahead-by-k Voting | ✅ Complete | VoteRace, vote_with_margin, adaptive k |
+| 6. Red-Flagging Protocols | ✅ Complete | RedFlagValidator with domain-specific extensions |
+| 7. Recursive Architecture | ✅ Complete | LlmDecompositionAgent, RecursiveOrchestrator, domain decomposers |
+| 8. Economic Analysis | ✅ Complete | Θ(s ln s) validated in benchmarks |
 
 ### Economic Model
 
