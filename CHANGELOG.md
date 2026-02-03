@@ -8,6 +8,59 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+#### Validation Demo Improvements (2026-02-03)
+
+##### Arithmetic Demo (`examples/arithmetic_demo.rs`)
+- **New arithmetic demo**: Validates MAKER's error correction on tasks with random errors
+- **Multi-operation support**: Addition, subtraction, multiplication with configurable difficulty (1-5)
+- **Reproducible problems**: `--seed` flag for deterministic problem generation
+- **Strict mode**: `--strict` flag halts on first error for true zero-error validation
+- **Result**: 50/50 problems correct with 2.7 samples average (gpt-5-mini)
+
+##### Hanoi Demo Improvements (`examples/hanoi_demo.rs`)
+- **Genuine prompt**: Removed answer-feeding, now uses few-shot + chain-of-thought
+- **Few-shot example**: 2-disk solution teaches the algorithm pattern
+- **Chain-of-thought**: "Think step by step" prompting for reasoning
+- **Strict mode**: `--strict` flag halts on first error
+- **Result**: 31/31 steps (5-disk) with 0 errors using improved prompt
+
+##### OpenAI Fixed Temperature Support (`src/llm/openai.rs`)
+- **`requires_fixed_temperature()`**: Detects models that don't support custom temperature
+- **gpt-5-mini/gpt-5-nano handling**: Omits temperature parameter (only default=1 supported)
+- **`reasoning_effort` parameter**: Corrected from nested `reasoning.effort` to top-level `reasoning_effort`
+- **Values corrected**: `low`/`medium`/`high` (not `minimal`/`medium`/`high`)
+
+### Changed
+
+#### Validation Findings
+- **Hanoi with raw prompt**: Fails on step 2 (systematic reasoning errors)
+- **Hanoi with few-shot+CoT**: 31/31 correct (random errors corrected by voting)
+- **Arithmetic**: 50/50 correct (random calculation errors corrected by voting)
+- **Key insight**: MAKER corrects random errors, not systematic reasoning failures
+
+#### CLI/MCP Integration Refactoring (2026-02-02)
+
+##### MCP Decompose Tool (`src/mcp/tools/decompose.rs`)
+- **`maker/decompose` tool**: New MCP tool for LLM-driven task decomposition with full LLM integration
+- **`DecomposeRequest`**: Request type with `task`, `provider`, `model`, `max_depth`, and `context` fields
+- **`DecomposeResponse`**: Response type with `proposal` (subtasks, composition strategy) and execution metadata
+
+##### Shared Infrastructure
+- **`create_matcher_from_string()`** (`src/core/matchers/mod.rs`): Shared matcher factory supporting `"exact"`, `"embedding"`, `"code"`, `"auto"`, and preset names (`"code_generation"`, `"summarization"`, `"chat"`, `"extraction"`, `"classification"`, `"reasoning"`, `"creative"`)
+- **`setup_provider_client()`** (`src/llm/adapter.rs`): Shared provider factory with proper error handling
+- **`VALID_PROVIDERS` constant**: Centralized provider list (`["ollama", "openai", "anthropic"]`)
+- **`valid_providers_str()`**: Helper for consistent error messages
+
+##### CLI Enhancements (`src/bin/maker-cli.rs`)
+- **`--adaptive` flag functional**: CLI vote now properly uses adaptive k-margin with EMA-based p-hat estimation
+- **`--matcher` flag functional**: CLI vote now supports matcher type selection (`exact`, `embedding`, `code`, `auto`)
+- **`--preset` flag functional**: CLI vote now supports domain presets (`code_generation`, `summarization`, etc.)
+- **Doc comments**: Added structured documentation to 8 response types and 7 helper functions
+
+##### Testing
+- **8 new CLI integration tests** (`tests/cli_functional.rs`): Coverage for adaptive, matcher, preset, and decompose functionality
+- **768 tests passing**: Full test suite with zero failures
+
 #### Vote Tool Field Remediation (`src/mcp/tools/vote.rs`)
 - **`matcher` field wired**: Creates matcher from request (`"exact"`, `"embedding"`, `"code"`), passes to `VoteConfig`, populates `matcher_type` in response
 - **`adaptive` field wired**: Branches to `vote_with_margin_adaptive()` when `adaptive=true`, populates `p_hat` in response
@@ -16,10 +69,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`VoteToolError::InvalidMatcher`**: New error variant with `provided` and `valid` fields for invalid matcher types
 - **11 unit tests**: Covering matcher creation, error display, invalid matcher handling, ensemble error, and adaptive p_hat
 
+### Changed
+
+#### Code Consolidation
+- **MCP vote tool** (`src/mcp/tools/vote.rs`): Now uses shared `create_matcher_from_string()` and `setup_provider_client()` (~67 lines removed)
+- **CLI binary** (`src/bin/maker-cli.rs`): Refactored to use shared infrastructure, fixed flag handling
+- **Decompose handler** (`src/mcp/server.rs`): Added `maker/decompose` tool routing with `spawn_blocking` for async safety
+
 ### Fixed
+
+#### OpenAI Reasoning Model Support (`src/llm/openai.rs`)
+- **Reasoning config now sent**: GPT-5 and o-series models now correctly send `reasoning.effort` in request body instead of just omitting temperature
+- **Temperature-to-effort mapping**: T < 0.3 → "minimal", T < 0.7 → "medium", T >= 0.7 → "high"
 
 #### Async Runtime Fix (`src/mcp/server.rs`)
 - **`vote` handler spawn_blocking**: Wrapped blocking `execute_vote` call in `tokio::task::spawn_blocking` to prevent tokio runtime nesting panic when called from async context
+
+#### CLI Flag Handling (`src/bin/maker-cli.rs`)
+- **Flags no longer silently ignored**: `--adaptive`, `--matcher`, and `--preset` flags were being parsed but discarded; now fully functional
 
 ## [0.3.0] - 2026-01-31
 
