@@ -34,6 +34,7 @@ pub mod aggregator;
 pub mod discriminator;
 pub mod domains;
 pub mod filesystem;
+pub mod llm_agent;
 pub mod orchestrator;
 pub mod solver;
 
@@ -62,6 +63,9 @@ pub use solver::{
     ExecutionError, ExecutionMetrics, ExecutorConfig, LeafNodeExecutor, ProposalResult,
     SubtaskResult,
 };
+
+// Re-export LLM decomposition agent types
+pub use llm_agent::{LlmAgentConfig, LlmDecompositionAgent};
 
 /// Unique identifier for a subtask within a decomposition tree
 pub type TaskId = String;

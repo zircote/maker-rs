@@ -23,6 +23,7 @@
 
 use crate::core::adaptive::{KEstimator, VoteObservation};
 use crate::core::matcher::{default_matcher, CandidateMatcher};
+use crate::core::matchers::{EmbeddingClient, MatcherFactory, MatcherPreset, PromptAnalyzer};
 use crate::core::redflag::RedFlagValidator;
 use crate::core::voting::{CandidateId, VoteCheckResult, VoteRace};
 use std::collections::HashMap;
@@ -90,6 +91,59 @@ impl VoteConfig {
     /// Set diversity temperature for samples after the first
     pub fn with_diversity_temperature(mut self, temp: f64) -> Self {
         self.diversity_temperature = temp;
+        self
+    }
+
+    /// Create config with a preset-based matcher.
+    ///
+    /// Creates an exact matcher based on the preset's preferred matcher type.
+    /// For embedding-based presets without a client, falls back to exact matching.
+    pub fn with_preset(mut self, preset: MatcherPreset) -> Self {
+        let factory = MatcherFactory::new();
+        self.matcher = factory.create_for_preset(preset, None);
+        self
+    }
+
+    /// Create config with a preset and embedding client.
+    ///
+    /// Creates a semantic matcher using the preset's threshold and the provided
+    /// embedding client for similarity comparison.
+    pub fn with_preset_and_embedding(
+        mut self,
+        preset: MatcherPreset,
+        client: Box<dyn EmbeddingClient>,
+    ) -> Self {
+        let factory = MatcherFactory::new();
+        self.matcher = factory.create_for_preset(preset, Some(client));
+        self
+    }
+
+    /// Create config with auto-detected matcher based on prompt content.
+    ///
+    /// Analyzes the prompt to determine the best preset, then creates
+    /// the appropriate matcher. Falls back to exact matching without
+    /// an embedding client.
+    pub fn with_auto_preset(mut self, prompt: &str) -> Self {
+        let analyzer = PromptAnalyzer::new();
+        let preset = analyzer.recommend_preset(prompt);
+        let factory = MatcherFactory::new();
+        self.matcher = factory.create_for_preset(preset, None);
+        self
+    }
+
+    /// Create config with auto-detected matcher and embedding client.
+    ///
+    /// Analyzes the prompt and creates a semantic matcher with the
+    /// recommended preset's threshold.
+    pub fn with_auto_preset_and_embedding(
+        mut self,
+        prompt: &str,
+        client: Box<dyn EmbeddingClient>,
+    ) -> Self {
+        let analyzer = PromptAnalyzer::new();
+        let preset = analyzer.recommend_preset(prompt);
+        let factory = MatcherFactory::new();
+        self.matcher = factory.create_for_preset(preset, Some(client));
         self
     }
 }

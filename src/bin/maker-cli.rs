@@ -4,13 +4,21 @@
 //! It has feature parity with the MCP tools.
 
 use clap::{Parser, Subcommand, ValueEnum};
-use maker::core::{calculate_kmin, validate_token_length, vote_with_margin, RedFlag, VoteConfig};
-use maker::llm::adapter::{create_provider, ProviderConfig};
+use maker::core::adaptive::{KEstimator, KEstimatorConfig};
+use maker::core::decomposition::{DecompositionAgent, LlmAgentConfig, LlmDecompositionAgent};
+use maker::core::matchers::create_matcher_from_string;
+use maker::core::{
+    calculate_kmin, validate_token_length, vote_with_margin, vote_with_margin_adaptive, RedFlag,
+    VoteConfig,
+};
+use maker::llm::adapter::{setup_provider_client, valid_providers_str, VALID_PROVIDERS};
 use maker::mcp::health::{validate_config, HealthChecker};
 use maker::mcp::server::ServerConfig;
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read};
 use std::process::ExitCode;
+use std::sync::Arc;
+use std::time::Duration;
 
 /// MAKER CLI - Zero-error LLM agent execution via SPRT voting
 #[derive(Parser)]
@@ -72,9 +80,13 @@ enum Commands {
         #[arg(long)]
         adaptive: bool,
 
-        /// Matcher type (exact, embedding, code)
-        #[arg(long, default_value = "exact")]
-        matcher: String,
+        /// Matcher type (exact, embedding, code) or preset name
+        #[arg(long)]
+        matcher: Option<String>,
+
+        /// Use a matcher preset (code_generation, summarization, chat, extraction, classification, reasoning, creative)
+        #[arg(long, conflicts_with = "matcher")]
+        preset: Option<String>,
     },
 
     /// Validate a response against red-flag rules
@@ -143,6 +155,14 @@ enum Commands {
         /// Timeout in seconds
         #[arg(long, default_value = "60")]
         timeout: u64,
+
+        /// LLM provider to use (ollama, openai, anthropic)
+        #[arg(long, default_value = "ollama")]
+        provider: String,
+
+        /// Model name override
+        #[arg(long)]
+        model: Option<String>,
     },
 
     /// Generate shell completions
@@ -177,24 +197,36 @@ enum Shell {
 // Response Types
 // ============================================================================
 
+/// Response from the vote command containing the voting result.
 #[derive(Serialize, Deserialize)]
 struct VoteResponse {
+    /// The winning response content that achieved k-margin lead
     winner: String,
+    /// Number of votes the winner received
     votes: usize,
+    /// Total number of samples collected during voting
     total_samples: usize,
+    /// The k-margin used for this vote (may differ from requested if adaptive)
     k_margin: usize,
+    /// Whether voting converged (true if winner declared)
     converged: bool,
 }
 
+/// Response from the validate command with validation results.
 #[derive(Serialize, Deserialize)]
 struct ValidateResponse {
+    /// Whether the response passed all validation checks
     valid: bool,
+    /// List of triggered red-flag violations (empty if valid)
     red_flags: Vec<RedFlagInfo>,
 }
 
+/// Information about a single red-flag validation failure.
 #[derive(Serialize, Deserialize)]
 struct RedFlagInfo {
+    /// Type of red-flag (TokenLengthExceeded, FormatViolation, LogicLoop)
     flag_type: String,
+    /// Human-readable description of the violation
     details: String,
 }
 
@@ -217,42 +249,66 @@ impl From<&RedFlag> for RedFlagInfo {
     }
 }
 
+/// Response from the calibrate command with estimated parameters.
 #[derive(Serialize, Deserialize)]
 struct CalibrateResponse {
+    /// Estimated per-step success probability (0.0-1.0)
     p_estimate: f64,
+    /// 95% Wilson score confidence interval for p_estimate as (lower, upper)
     confidence_interval: (f64, f64),
+    /// Number of samples used for estimation
     sample_count: usize,
+    /// Recommended k-margin based on p_estimate and target reliability
     recommended_k: usize,
 }
 
+/// A single calibration sample with prompt, expected answer, and optional response.
 #[derive(Serialize, Deserialize)]
 struct CalibrationSample {
+    /// The prompt that was sent to the LLM
     prompt: String,
+    /// The expected correct response
     ground_truth: String,
+    /// The actual LLM response (if available)
     response: Option<String>,
 }
 
+/// Response from the config command showing current configuration.
 #[derive(Serialize, Deserialize)]
 struct ConfigResponse {
+    /// Current default k-margin for voting
     k_margin: usize,
+    /// Current default LLM provider (ollama, openai, anthropic)
     provider: String,
+    /// Current default matcher type (exact, embedding, code, or preset name)
     matcher: String,
+    /// Whether adaptive k-margin is enabled by default
     adaptive: bool,
+    /// Maximum samples before voting timeout
     max_samples: usize,
 }
 
+/// Response from the decompose command with task breakdown.
 #[derive(Serialize, Deserialize)]
 struct DecomposeResponse {
+    /// Unique identifier for the root task
     task_id: String,
+    /// List of subtasks from decomposition
     subtasks: Vec<SubtaskInfo>,
+    /// Composition strategy (sequential, parallel, conditional)
     composition: String,
+    /// Depth of decomposition (0 for atomic, 1+ for decomposed)
     depth: usize,
 }
 
+/// Information about a single subtask in a decomposition.
 #[derive(Serialize, Deserialize)]
 struct SubtaskInfo {
+    /// Unique identifier for this subtask
     id: String,
+    /// Human-readable description of what this subtask does
     description: String,
+    /// Whether this is a leaf node (atomic, cannot be further decomposed)
     is_leaf: bool,
 }
 
@@ -296,8 +352,9 @@ fn main() -> ExitCode {
             max_samples,
             temperature,
             provider,
-            adaptive: _,
-            matcher: _,
+            adaptive,
+            matcher,
+            preset,
         } => execute_vote(
             cli.format,
             prompt,
@@ -305,6 +362,9 @@ fn main() -> ExitCode {
             max_samples,
             temperature,
             &provider,
+            adaptive,
+            matcher,
+            preset,
         ),
 
         Commands::Validate {
@@ -331,7 +391,9 @@ fn main() -> ExitCode {
             task,
             depth_limit,
             timeout,
-        } => execute_decompose(cli.format, task, depth_limit, timeout),
+            provider,
+            model,
+        } => execute_decompose(cli.format, task, depth_limit, timeout, &provider, model),
 
         Commands::Completions { shell } => {
             generate_completions(shell);
@@ -362,34 +424,50 @@ fn execute_vote(
     prompt: Option<String>,
     k_margin: usize,
     max_samples: usize,
-    _temperature: f64,
+    temperature: f64,
     provider: &str,
+    adaptive: bool,
+    matcher: Option<String>,
+    preset: Option<String>,
 ) -> Result<(), String> {
-    let prompt = get_input(prompt, "prompt")?;
+    let prompt_text = get_input(prompt, "prompt")?;
 
     if k_margin == 0 {
         return Err("k_margin must be >= 1".to_string());
     }
 
-    if prompt.is_empty() {
+    if prompt_text.is_empty() {
         return Err("prompt cannot be empty".to_string());
     }
 
-    // Create real provider based on CLI argument
-    let provider_config = ProviderConfig::default();
-    let client = match create_provider(provider, Some(provider_config)) {
-        Ok(Some(c)) => c,
-        Ok(None) => {
-            return Err(format!(
-                "Unknown provider: '{}'. Use: ollama, openai, anthropic",
-                provider
-            ))
-        }
-        Err(e) => return Err(format!("Failed to create provider '{}': {}", provider, e)),
-    };
-    let config = VoteConfig::default().with_max_samples(max_samples);
+    // Create matcher based on preset or matcher type
+    // If preset is provided, use it; otherwise use matcher type
+    let matcher_spec = preset.as_deref().or(matcher.as_deref());
+    let matcher_arc =
+        create_matcher_from_string(matcher_spec, &prompt_text).map_err(|e| e.to_string())?;
 
-    let result = vote_with_margin(&prompt, k_margin, client.as_ref(), config);
+    // Create real provider based on CLI argument
+    let client = setup_provider_client(provider, None)?;
+
+    let config = VoteConfig::default()
+        .with_max_samples(max_samples)
+        .with_matcher(matcher_arc)
+        .with_diversity_temperature(temperature);
+
+    // Execute voting - adaptive or static
+    let result = if adaptive {
+        let mut estimator = KEstimator::new(KEstimatorConfig::default());
+        vote_with_margin_adaptive(
+            &prompt_text,
+            &mut estimator,
+            0.95,          // target reliability
+            k_margin * 10, // remaining_steps estimate
+            client.as_ref(),
+            config,
+        )
+    } else {
+        vote_with_margin(&prompt_text, k_margin, client.as_ref(), config)
+    };
 
     match result {
         Ok(vote_result) => {
@@ -535,10 +613,11 @@ fn execute_config(
             config.k_margin = k;
         }
         if let Some(p) = provider {
-            if !["ollama", "openai", "anthropic"].contains(&p.as_str()) {
+            if !VALID_PROVIDERS.contains(&p.as_str()) {
                 return Err(format!(
-                    "Invalid provider '{}'. Use: ollama, openai, anthropic",
-                    p
+                    "Invalid provider '{}'. Valid options: {}",
+                    p,
+                    valid_providers_str()
                 ));
             }
             config.provider = p;
@@ -564,7 +643,9 @@ fn execute_decompose(
     format: OutputFormat,
     task: Option<String>,
     depth_limit: usize,
-    _timeout: u64,
+    timeout: u64,
+    provider: &str,
+    model: Option<String>,
 ) -> Result<(), String> {
     let task_desc = get_input(task, "task")?;
 
@@ -572,17 +653,58 @@ fn execute_decompose(
         return Err("task description cannot be empty".to_string());
     }
 
-    // For now, return a simple identity decomposition
-    // Full implementation would use the RecursiveOrchestrator
+    // Create provider
+    let client = setup_provider_client(provider, model)?;
+
+    // Create LLM decomposition agent
+    let agent_config = LlmAgentConfig::default().with_max_subtasks(depth_limit);
+    let agent = LlmDecompositionAgent::new(Arc::from(client), agent_config);
+
+    // Set timeout context
+    let start = std::time::Instant::now();
+    let timeout_duration = Duration::from_secs(timeout);
+
+    // Propose decomposition
+    let task_id = format!(
+        "task_{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    );
+
+    let proposal = agent
+        .propose_decomposition(&task_id, &task_desc, &serde_json::Value::Null, 0)
+        .map_err(|e| format!("Decomposition failed: {}", e))?;
+
+    // Check timeout
+    if start.elapsed() > timeout_duration {
+        return Err(format!("Decomposition timed out after {} seconds", timeout));
+    }
+
+    // Convert to response
+    let subtasks: Vec<SubtaskInfo> = proposal
+        .subtasks
+        .iter()
+        .map(|st| SubtaskInfo {
+            id: st.task_id.clone(),
+            description: st.description.clone(),
+            is_leaf: st.is_leaf,
+        })
+        .collect();
+
+    let composition = match proposal.composition_fn {
+        maker::core::decomposition::CompositionFunction::Sequential => "sequential",
+        maker::core::decomposition::CompositionFunction::Parallel { .. } => "parallel",
+        maker::core::decomposition::CompositionFunction::Conditional { .. } => "conditional",
+        maker::core::decomposition::CompositionFunction::Custom { ref name, .. } => name.as_str(),
+    };
+
     let result = DecomposeResponse {
-        task_id: "task-1".to_string(),
-        subtasks: vec![SubtaskInfo {
-            id: "task-1".to_string(),
-            description: task_desc,
-            is_leaf: true,
-        }],
-        composition: "sequential".to_string(),
-        depth: depth_limit.min(1),
+        task_id: proposal.proposal_id,
+        subtasks,
+        composition: composition.to_string(),
+        depth: if proposal.subtasks.is_empty() { 0 } else { 1 },
     };
 
     output_response(format, &result)
@@ -630,8 +752,7 @@ fn execute_health(
     // Perform health check
     let status = if check_provider {
         // Try to create a provider to check connectivity
-        let provider_config = ProviderConfig::default();
-        let provider_healthy = create_provider("ollama", Some(provider_config)).is_ok();
+        let provider_healthy = setup_provider_client("ollama", None).is_ok();
         checker.check_with_provider(provider_healthy)
     } else {
         checker.check()
@@ -668,6 +789,18 @@ fn execute_health(
 // Helper Functions
 // ============================================================================
 
+/// Get input from command argument or stdin.
+///
+/// If `arg` is `Some(value)` and not "-", returns the value directly.
+/// If `arg` is `None` or "-", reads from stdin until EOF and returns trimmed content.
+///
+/// # Arguments
+/// * `arg` - Optional command-line argument value
+/// * `name` - Name of the input for error messages (e.g., "prompt", "response")
+///
+/// # Returns
+/// * `Ok(String)` - The input content
+/// * `Err(String)` - Error message if stdin read fails
 fn get_input(arg: Option<String>, name: &str) -> Result<String, String> {
     match arg {
         Some(s) if s != "-" => Ok(s),
@@ -682,6 +815,17 @@ fn get_input(arg: Option<String>, name: &str) -> Result<String, String> {
     }
 }
 
+/// Output a response in the specified format.
+///
+/// Serializes the response to JSON (pretty-printed) or human-readable text format.
+///
+/// # Arguments
+/// * `format` - Output format (Json or Text)
+/// * `response` - Any serializable response struct
+///
+/// # Returns
+/// * `Ok(())` - Response printed to stdout
+/// * `Err(String)` - Serialization error
 fn output_response<T: Serialize>(format: OutputFormat, response: &T) -> Result<(), String> {
     match format {
         OutputFormat::Json => {
@@ -699,6 +843,14 @@ fn output_response<T: Serialize>(format: OutputFormat, response: &T) -> Result<(
     Ok(())
 }
 
+/// Recursively print a JSON value with indentation for human-readable output.
+///
+/// Objects print as "key: value" pairs, arrays as indexed or bulleted items.
+/// Nested structures increase indentation by 2 spaces per level.
+///
+/// # Arguments
+/// * `value` - The JSON value to print
+/// * `indent` - Current indentation level (0 for root)
 fn print_value(value: &serde_json::Value, indent: usize) {
     let prefix = "  ".repeat(indent);
     match value {
@@ -734,6 +886,10 @@ fn print_value(value: &serde_json::Value, indent: usize) {
     }
 }
 
+/// Format a simple JSON value as a string for display.
+///
+/// Strings are returned as-is, numbers/bools converted to string representation.
+/// Complex values (objects/arrays) fall back to JSON serialization.
 fn format_simple_value(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::String(s) => s.clone(),
@@ -744,10 +900,32 @@ fn format_simple_value(value: &serde_json::Value) -> String {
     }
 }
 
+/// Normalize whitespace in a string for comparison.
+///
+/// Collapses all whitespace sequences (spaces, tabs, newlines) into single spaces
+/// and trims leading/trailing whitespace. Used for comparing LLM responses.
+///
+/// # Example
+/// ```ignore
+/// assert_eq!(normalize("  hello   world  "), "hello world");
+/// ```
 fn normalize(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Calculate the Wilson score confidence interval for a proportion.
+///
+/// Uses the Wilson score method which provides better coverage for small samples
+/// and extreme proportions compared to the normal approximation.
+///
+/// # Arguments
+/// * `successes` - Number of successful outcomes
+/// * `total` - Total number of trials
+/// * `z` - Z-score for desired confidence level (1.96 for 95%)
+///
+/// # Returns
+/// Tuple of (lower_bound, upper_bound) for the confidence interval.
+/// Returns (0.0, 1.0) if total is 0.
 fn wilson_score_interval(successes: usize, total: usize, z: f64) -> (f64, f64) {
     if total == 0 {
         return (0.0, 1.0);

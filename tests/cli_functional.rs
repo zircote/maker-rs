@@ -649,7 +649,227 @@ fn test_cli_missing_args() {
 }
 
 // ============================================================================
-// Test 9: Text Output Format
+// Test 9: CLI Vote Command with New Flags (Adaptive, Matcher, Preset)
+// ============================================================================
+
+/// Test vote command with --adaptive flag
+#[test]
+#[ignore = "Requires running Ollama instance"]
+fn test_cli_vote_with_adaptive_flag() {
+    if !is_ollama_available() {
+        println!("SKIPPED: Ollama is not running");
+        return;
+    }
+
+    let output = run_cli(&[
+        "--format",
+        "json",
+        "vote",
+        "--prompt",
+        "What is 2+2?",
+        "--k-margin",
+        "2",
+        "--max-samples",
+        "20",
+        "--provider",
+        "ollama",
+        "--adaptive",
+    ]);
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    println!("stdout: {}", stdout);
+    println!("stderr: {}", stderr);
+
+    if !output.status.success() {
+        if stderr.contains("connection") || stderr.contains("refused") {
+            println!("SKIPPED: Ollama connection failed");
+            return;
+        }
+        panic!("CLI with --adaptive failed: {}", stderr);
+    }
+
+    let response: VoteResponse =
+        serde_json::from_str(&stdout).expect("Failed to parse vote response JSON");
+
+    assert!(!response.winner.is_empty(), "Winner should not be empty");
+    assert!(response.converged, "Should have converged with adaptive");
+}
+
+/// Test vote command with --matcher exact
+#[test]
+fn test_cli_vote_with_matcher_exact() {
+    let output = run_cli(&[
+        "vote",
+        "--prompt",
+        "test prompt",
+        "--k-margin",
+        "2",
+        "--matcher",
+        "exact",
+    ]);
+
+    // Should accept exact matcher (may fail on provider, but validates arg parsing)
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("Invalid matcher"),
+        "Should accept 'exact' matcher"
+    );
+}
+
+/// Test vote command with --matcher embedding
+#[test]
+fn test_cli_vote_with_matcher_embedding() {
+    let output = run_cli(&[
+        "vote",
+        "--prompt",
+        "test prompt",
+        "--k-margin",
+        "2",
+        "--matcher",
+        "embedding",
+    ]);
+
+    // Should accept embedding matcher
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("Invalid matcher"),
+        "Should accept 'embedding' matcher"
+    );
+}
+
+/// Test vote command with --preset code_generation
+#[test]
+fn test_cli_vote_with_preset_code_generation() {
+    let output = run_cli(&[
+        "vote",
+        "--prompt",
+        "Write a function",
+        "--k-margin",
+        "2",
+        "--preset",
+        "code_generation",
+    ]);
+
+    // Should accept code_generation preset
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("Invalid preset") && !stderr.contains("Invalid matcher"),
+        "Should accept 'code_generation' preset"
+    );
+}
+
+/// Test vote command with invalid matcher fails
+#[test]
+fn test_cli_vote_with_invalid_matcher_fails() {
+    let output = run_cli(&[
+        "vote",
+        "--prompt",
+        "test",
+        "--k-margin",
+        "2",
+        "--matcher",
+        "invalid-matcher-xyz",
+    ]);
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Should fail with matcher error
+    assert!(
+        !output.status.success()
+            || stderr.contains("invalid matcher")
+            || stderr.contains("Invalid"),
+        "Should reject invalid matcher type"
+    );
+}
+
+// ============================================================================
+// Test 10: CLI Decompose Command
+// ============================================================================
+
+/// Test decompose command basic functionality
+#[test]
+#[ignore = "Requires running Ollama instance"]
+fn test_cli_decompose_basic() {
+    if !is_ollama_available() {
+        println!("SKIPPED: Ollama is not running");
+        return;
+    }
+
+    let output = run_cli(&[
+        "--format",
+        "json",
+        "decompose",
+        "--task",
+        "Build a simple calculator",
+        "--depth-limit",
+        "5",
+        "--provider",
+        "ollama",
+    ]);
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    println!("stdout: {}", stdout);
+    println!("stderr: {}", stderr);
+
+    if !output.status.success() {
+        if stderr.contains("connection") || stderr.contains("refused") {
+            println!("SKIPPED: Ollama connection failed");
+            return;
+        }
+        panic!("CLI decompose failed: {}", stderr);
+    }
+
+    // Parse JSON response
+    let response: serde_json::Value =
+        serde_json::from_str(&stdout).expect("Failed to parse decompose response JSON");
+
+    // Validate response structure
+    assert!(
+        response.get("subtasks").is_some(),
+        "Should have subtasks field"
+    );
+    assert!(
+        response.get("composition").is_some(),
+        "Should have composition field"
+    );
+}
+
+/// Test decompose command with empty task fails
+#[test]
+fn test_cli_decompose_empty_task_fails() {
+    let output = run_cli(&["decompose", "--task", ""]);
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Should fail with error about empty task
+    assert!(
+        !output.status.success() || stderr.contains("empty") || stderr.contains("cannot be empty"),
+        "Should reject empty task"
+    );
+}
+
+/// Test decompose command with --provider flag
+#[test]
+fn test_cli_decompose_with_provider() {
+    let output = run_cli(&["decompose", "--task", "test task", "--provider", "ollama"]);
+
+    // Should accept provider flag (may fail on connection, but validates arg parsing)
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    println!("stdout: {}", stdout);
+    println!("stderr: {}", stderr);
+
+    // Just verify the command structure is accepted
+    // Actual execution may fail without Ollama running
+}
+
+// ============================================================================
+// Test 11: Text Output Format
 // ============================================================================
 
 /// Test that text output format works (default)

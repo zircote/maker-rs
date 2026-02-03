@@ -8,6 +8,7 @@ use crate::mcp::health::HealthChecker;
 use crate::mcp::tools::{
     calibrate::{execute_calibrate, CalibrateRequest},
     configure::{apply_config_updates, Config, ConfigRequest, ConfigResponse, MatcherConfig},
+    decompose::{execute_decompose, DecomposeRequest},
     health::{execute_health, HealthRequest},
     validate::{execute_validate, ValidateRequest},
     vote::{execute_vote, VoteRequest},
@@ -239,6 +240,38 @@ impl MakerServer {
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
+
+    /// Execute recursive task decomposition to split complex tasks into subtasks.
+    ///
+    /// Returns a decomposition proposal with subtasks and composition strategy.
+    #[tool(
+        name = "maker/decompose",
+        description = "Execute recursive task decomposition to split complex tasks into subtasks"
+    )]
+    async fn decompose(
+        &self,
+        Parameters(request): Parameters<DecomposeRequest>,
+    ) -> Result<CallToolResult, McpError> {
+        let config = self.state.config.read().await;
+        let default_provider = config.provider.clone();
+        drop(config); // Release the lock before blocking
+
+        // Run blocking decompose execution on a dedicated thread pool
+        let result = tokio::task::spawn_blocking(move || {
+            execute_decompose(&request, &default_provider)
+        })
+        .await
+        .map_err(|e| McpError::internal_error(format!("Decompose task failed: {}", e), None))?;
+
+        match result {
+            Ok(response) => {
+                let json = serde_json::to_string_pretty(&response)
+                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                Ok(CallToolResult::success(vec![Content::text(json)]))
+            }
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
 }
 
 impl Default for MakerServer {
@@ -260,7 +293,7 @@ impl ServerHandler for MakerServer {
             },
             instructions: Some(
                 "MAKER Framework - Zero-error LLM agent execution via SPRT voting. \
-                 Available tools: maker/vote, maker/validate, maker/calibrate, maker/configure."
+                 Available tools: maker/vote, maker/validate, maker/calibrate, maker/configure, maker/decompose, maker/health."
                     .into(),
             ),
         }

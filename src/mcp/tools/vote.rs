@@ -3,17 +3,15 @@
 //! Execute SPRT voting on a prompt to get the voted winner with confidence metrics.
 
 use crate::core::adaptive::{KEstimator, KEstimatorConfig};
-use crate::core::matcher::{CandidateMatcher, ExactMatcher};
-use crate::core::matchers::{EmbeddingMatcher, OllamaEmbeddingClient};
+use crate::core::matchers::create_matcher_from_string;
 use crate::core::{vote_with_margin, vote_with_margin_adaptive, VoteConfig};
-use crate::llm::adapter::{create_provider, ProviderConfig};
+use crate::llm::adapter::setup_provider_client;
 use crate::llm::ensemble::EnsembleMetrics;
 use rmcp::schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
 use std::time::Duration;
 use tracing::warn;
 
@@ -40,7 +38,24 @@ pub struct VoteRequest {
     /// Enable adaptive k-margin for this vote (per-call override)
     #[serde(default)]
     pub adaptive: Option<bool>,
-    /// Matcher type for this vote (per-call override: "exact", "embedding", "code")
+    /// Matcher type for candidate grouping (per-call override).
+    ///
+    /// Basic types:
+    /// - "exact": Whitespace-normalized string comparison (default)
+    /// - "embedding": Semantic similarity via Ollama embeddings
+    /// - "code": AST-based code comparison (requires code-matcher feature)
+    ///
+    /// Presets (use Ollama embeddings with tuned thresholds):
+    /// - "code_generation": 0.95 threshold for code output
+    /// - "summarization": 0.85 threshold for paraphrasing
+    /// - "chat": 0.90 threshold for conversational responses
+    /// - "extraction": 0.92 threshold for structured data
+    /// - "classification": 0.98 threshold for labels
+    /// - "reasoning": 1.0 exact matching for math/logic
+    /// - "creative": 0.80 threshold for creative writing
+    ///
+    /// Auto-detection:
+    /// - "auto": Analyzes prompt to choose best preset
     #[serde(default)]
     pub matcher: Option<String>,
     /// Enable ensemble mode for this vote (per-call override)
@@ -121,50 +136,6 @@ fn hash_prompt(prompt: &str) -> String {
     let mut hasher = DefaultHasher::new();
     prompt.hash(&mut hasher);
     format!("{:016x}", hasher.finish())
-}
-
-/// Create a matcher from a string type specification.
-///
-/// # Arguments
-/// * `matcher_type` - One of "exact", "embedding", or "code" (None defaults to "exact")
-///
-/// # Returns
-/// * `Ok(Arc<dyn CandidateMatcher>)` - The configured matcher
-/// * `Err(VoteToolError::InvalidMatcher)` - If the matcher type is unknown
-fn create_matcher(matcher_type: Option<&str>) -> Result<Arc<dyn CandidateMatcher>, VoteToolError> {
-    match matcher_type.unwrap_or("exact") {
-        "exact" => Ok(Arc::new(ExactMatcher::new())),
-        "embedding" => {
-            let client = Box::new(OllamaEmbeddingClient::new());
-            Ok(Arc::new(EmbeddingMatcher::new(client, 0.92)))
-        }
-        #[cfg(feature = "code-matcher")]
-        "code" => {
-            use crate::core::matchers::code::{CodeLanguage, CodeMatcher};
-            Ok(Arc::new(CodeMatcher::with_default_threshold(
-                CodeLanguage::Rust,
-            )))
-        }
-        #[cfg(not(feature = "code-matcher"))]
-        "code" => Err(VoteToolError::InvalidMatcher {
-            provided: "code".to_string(),
-            valid: vec!["exact".to_string(), "embedding".to_string()],
-        }),
-        other => {
-            #[cfg(feature = "code-matcher")]
-            let valid = vec![
-                "exact".to_string(),
-                "embedding".to_string(),
-                "code".to_string(),
-            ];
-            #[cfg(not(feature = "code-matcher"))]
-            let valid = vec!["exact".to_string(), "embedding".to_string()];
-            Err(VoteToolError::InvalidMatcher {
-                provided: other.to_string(),
-                valid,
-            })
-        }
-    }
 }
 
 /// Response from maker/vote tool
@@ -293,7 +264,23 @@ pub fn execute_vote(
     }
 
     // Create matcher based on request (defaults to "exact")
-    let matcher = create_matcher(request.matcher.as_deref())?;
+    let matcher = create_matcher_from_string(request.matcher.as_deref(), &request.prompt).map_err(
+        |e| match e {
+            crate::core::matchers::MatcherError::InvalidMatcher { provided, valid } => {
+                VoteToolError::InvalidMatcher { provided, valid }
+            }
+            crate::core::matchers::MatcherError::CodeMatcherNotEnabled => {
+                VoteToolError::InvalidMatcher {
+                    provided: "code".to_string(),
+                    valid: vec![
+                        "exact".to_string(),
+                        "embedding".to_string(),
+                        "auto".to_string(),
+                    ],
+                }
+            }
+        },
+    )?;
 
     let config = VoteConfig::default()
         .with_max_samples(request.max_samples.unwrap_or(default_max_samples))
@@ -307,23 +294,9 @@ pub fn execute_vote(
 
     // Create provider based on request (defaults to ollama)
     let provider_name = request.provider.as_deref().unwrap_or("ollama");
-    let provider_config = ProviderConfig {
-        model: request.model.clone(),
-        ..Default::default()
-    };
-
     let client: Box<dyn crate::core::executor::LlmClient> =
-        match create_provider(provider_name, Some(provider_config)) {
-            Ok(Some(client)) => client,
-            Ok(None) => {
-                return Err(VoteToolError::ProviderError {
-                    message: format!("Unknown provider: {}", provider_name),
-                });
-            }
-            Err(e) => {
-                return Err(VoteToolError::ProviderError { message: e });
-            }
-        };
+        setup_provider_client(provider_name, request.model.clone())
+            .map_err(|e| VoteToolError::ProviderError { message: e })?;
 
     // Map executor errors to tool errors
     let map_error = |e: crate::core::ExecutorVoteError| match e {
@@ -666,34 +639,54 @@ mod tests {
 
     #[test]
     fn test_create_matcher_exact() {
-        let matcher = create_matcher(Some("exact")).unwrap();
+        let matcher = create_matcher_from_string(Some("exact"), "test prompt").unwrap();
         assert_eq!(matcher.matcher_type(), "exact");
     }
 
     #[test]
     fn test_create_matcher_default_is_exact() {
-        let matcher = create_matcher(None).unwrap();
+        let matcher = create_matcher_from_string(None, "test prompt").unwrap();
         assert_eq!(matcher.matcher_type(), "exact");
     }
 
     #[test]
     fn test_create_matcher_embedding() {
-        let matcher = create_matcher(Some("embedding")).unwrap();
+        let matcher = create_matcher_from_string(Some("embedding"), "test prompt").unwrap();
         assert_eq!(matcher.matcher_type(), "embedding");
     }
 
     #[test]
     fn test_create_matcher_invalid_returns_error() {
-        let result = create_matcher(Some("unknown"));
+        use crate::core::matchers::MatcherError;
+        let result = create_matcher_from_string(Some("unknown"), "test prompt");
         assert!(result.is_err());
         match result {
-            Err(VoteToolError::InvalidMatcher { provided, valid }) => {
+            Err(MatcherError::InvalidMatcher { provided, valid }) => {
                 assert_eq!(provided, "unknown");
                 assert!(valid.contains(&"exact".to_string()));
                 assert!(valid.contains(&"embedding".to_string()));
             }
             _ => panic!("Expected InvalidMatcher error"),
         }
+    }
+
+    #[test]
+    fn test_create_matcher_preset() {
+        let matcher = create_matcher_from_string(Some("summarization"), "test prompt").unwrap();
+        // Summarization preset uses embedding matcher with 0.85 threshold
+        assert_eq!(matcher.matcher_type(), "embedding");
+    }
+
+    #[test]
+    fn test_create_matcher_auto() {
+        // Auto-detection should choose based on prompt
+        let code_prompt = "Write a function to sort numbers";
+        let matcher = create_matcher_from_string(Some("auto"), code_prompt).unwrap();
+        // Should detect code task and use code_generation preset
+        assert!(
+            matcher.matcher_type() == "embedding" || matcher.matcher_type() == "code",
+            "Expected embedding or code matcher for code prompt"
+        );
     }
 
     #[test]
