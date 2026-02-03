@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <linearGradient id="infoBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc"/>
+      <stop offset="100%" style="stop-color:#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#ea580c"/>
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="500" fill="url(#infoBg)" rx="12"/>
+  <rect x="2" y="2" width="796" height="496" fill="none" stroke="#cbd5e1" stroke-width="2" rx="10"/>
+
+  <!-- Title -->
+  <text x="400" y="45" font-family="system-ui, sans-serif" font-size="28" fill="#0f172a" text-anchor="middle" font-weight="700">How MAKER Works</text>
+
+  <!-- The Problem Section -->
+  <g transform="translate(30, 70)">
+    <rect width="230" height="120" fill="#fef2f2" rx="8" stroke="#fecaca" stroke-width="1"/>
+    <text x="115" y="28" font-family="system-ui, sans-serif" font-size="14" fill="#dc2626" text-anchor="middle" font-weight="600">THE PROBLEM</text>
+    <text x="115" y="55" font-family="system-ui, sans-serif" font-size="12" fill="#64748b" text-anchor="middle">1,000 steps × 99% accuracy</text>
+    <text x="115" y="80" font-family="system-ui, sans-serif" font-size="24" fill="#dc2626" text-anchor="middle" font-weight="700">0.004%</text>
+    <text x="115" y="105" font-family="system-ui, sans-serif" font-size="12" fill="#64748b" text-anchor="middle">task success rate</text>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M 275 130 L 310 130" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- The Solution Section -->
+  <g transform="translate(320, 70)">
+    <rect width="230" height="120" fill="#f0fdf4" rx="8" stroke="#bbf7d0" stroke-width="1"/>
+    <text x="115" y="28" font-family="system-ui, sans-serif" font-size="14" fill="#16a34a" text-anchor="middle" font-weight="600">MAKER SOLUTION</text>
+    <text x="115" y="55" font-family="system-ui, sans-serif" font-size="12" fill="#64748b" text-anchor="middle">SPRT voting + k-margin</text>
+    <text x="115" y="80" font-family="system-ui, sans-serif" font-size="24" fill="#16a34a" text-anchor="middle" font-weight="700">95%+</text>
+    <text x="115" y="105" font-family="system-ui, sans-serif" font-size="12" fill="#64748b" text-anchor="middle">task success rate</text>
+  </g>
+
+  <!-- Cost Badge -->
+  <g transform="translate(565, 90)">
+    <rect width="200" height="80" fill="#fefce8" rx="8" stroke="#fef08a" stroke-width="1"/>
+    <text x="100" y="30" font-family="system-ui, sans-serif" font-size="13" fill="#a16207" text-anchor="middle" font-weight="600">COST SCALING</text>
+    <text x="100" y="58" font-family="ui-monospace, monospace" font-size="18" fill="#854d0e" text-anchor="middle" font-weight="700">Θ(s ln s)</text>
+    <text x="100" y="72" font-family="system-ui, sans-serif" font-size="10" fill="#a16207" text-anchor="middle">logarithmic, not linear</text>
+  </g>
+
+  <!-- Architecture Flow -->
+  <g transform="translate(30, 210)">
+    <text x="370" y="0" font-family="system-ui, sans-serif" font-size="16" fill="#475569" text-anchor="middle" font-weight="600">Architecture Flow</text>
+
+    <!-- Step boxes -->
+    <!-- 1. LLM Samples -->
+    <g transform="translate(0, 20)">
+      <rect width="140" height="70" fill="url(#blueGrad)" rx="6"/>
+      <text x="70" y="30" font-family="system-ui, sans-serif" font-size="13" fill="white" text-anchor="middle" font-weight="600">1. Sample LLM</text>
+      <text x="70" y="50" font-family="system-ui, sans-serif" font-size="11" fill="#dbeafe" text-anchor="middle">Multiple responses</text>
+    </g>
+
+    <!-- Arrow -->
+    <path d="M 155 55 L 185 55" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 2. Red-Flag -->
+    <g transform="translate(200, 20)">
+      <rect width="140" height="70" fill="#ef4444" rx="6"/>
+      <text x="70" y="30" font-family="system-ui, sans-serif" font-size="13" fill="white" text-anchor="middle" font-weight="600">2. Red-Flag</text>
+      <text x="70" y="50" font-family="system-ui, sans-serif" font-size="11" fill="#fecaca" text-anchor="middle">Discard bad samples</text>
+    </g>
+
+    <!-- Arrow -->
+    <path d="M 355 55 L 385 55" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 3. Vote -->
+    <g transform="translate(400, 20)">
+      <rect width="140" height="70" fill="url(#orangeGrad)" rx="6"/>
+      <text x="70" y="30" font-family="system-ui, sans-serif" font-size="13" fill="white" text-anchor="middle" font-weight="600">3. SPRT Vote</text>
+      <text x="70" y="50" font-family="system-ui, sans-serif" font-size="11" fill="#fed7aa" text-anchor="middle">k-margin consensus</text>
+    </g>
+
+    <!-- Arrow -->
+    <path d="M 555 55 L 585 55" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 4. Winner -->
+    <g transform="translate(600, 20)">
+      <rect width="140" height="70" fill="url(#greenGrad)" rx="6"/>
+      <text x="70" y="30" font-family="system-ui, sans-serif" font-size="13" fill="white" text-anchor="middle" font-weight="600">4. Winner</text>
+      <text x="70" y="50" font-family="system-ui, sans-serif" font-size="11" fill="#bbf7d0" text-anchor="middle">High-confidence result</text>
+    </g>
+  </g>
+
+  <!-- Key Concepts -->
+  <g transform="translate(30, 330)">
+    <text x="370" y="0" font-family="system-ui, sans-serif" font-size="16" fill="#475569" text-anchor="middle" font-weight="600">Key Concepts</text>
+
+    <!-- k-margin -->
+    <g transform="translate(0, 20)">
+      <rect width="180" height="80" fill="#f1f5f9" rx="6" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="90" y="28" font-family="ui-monospace, monospace" font-size="14" fill="#f97316" text-anchor="middle" font-weight="700">k-margin</text>
+      <text x="90" y="48" font-family="system-ui, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Winner must lead by k</text>
+      <text x="90" y="64" font-family="system-ui, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Higher k = more reliable</text>
+    </g>
+
+    <!-- Red-Flagging -->
+    <g transform="translate(200, 20)">
+      <rect width="180" height="80" fill="#f1f5f9" rx="6" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="90" y="28" font-family="ui-monospace, monospace" font-size="14" fill="#ef4444" text-anchor="middle" font-weight="700">Red-Flagging</text>
+      <text x="90" y="48" font-family="system-ui, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Discard, don't repair</text>
+      <text x="90" y="64" font-family="system-ui, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Token limits, format checks</text>
+    </g>
+
+    <!-- m=1 Decomposition -->
+    <g transform="translate(400, 20)">
+      <rect width="180" height="80" fill="#f1f5f9" rx="6" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="90" y="28" font-family="ui-monospace, monospace" font-size="14" fill="#3b82f6" text-anchor="middle" font-weight="700">m=1 Decomposition</text>
+      <text x="90" y="48" font-family="system-ui, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Atomic microagent steps</text>
+      <text x="90" y="64" font-family="system-ui, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">One step per agent call</text>
+    </g>
+
+    <!-- Adaptive k -->
+    <g transform="translate(600, 20)">
+      <rect width="170" height="80" fill="#f1f5f9" rx="6" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="85" y="28" font-family="ui-monospace, monospace" font-size="14" fill="#22c55e" text-anchor="middle" font-weight="700">Adaptive k</text>
+      <text x="85" y="48" font-family="system-ui, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Auto-adjust based on</text>
+      <text x="85" y="64" font-family="system-ui, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">observed accuracy</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <g transform="translate(400, 475)">
+    <text x="0" y="0" font-family="system-ui, sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Based on: Solving a Million-Step LLM Task with Zero Errors (arXiv:2511.09030)</text>
+  </g>
+</svg>
