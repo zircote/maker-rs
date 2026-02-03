@@ -6,9 +6,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-03
+
 ### Added
 
-#### GitHub Social Enhancement (2026-02-03)
+#### GitHub Social Enhancement
 
 ##### Social Preview Images (`.github/`)
 - **`social-preview.svg`**: Light mode social preview (1280x640) with MAKER branding

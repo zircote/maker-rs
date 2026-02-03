@@ -1,6 +1,6 @@
 [package]
 name = "maker"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "MAKER Framework - Zero-error LLM agent execution via SPRT voting"
 license = "MIT"
