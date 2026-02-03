@@ -4,6 +4,15 @@
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/zircote/maker-rs/ci.yml?branch=main)](https://github.com/zircote/maker-rs/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
+[![MCP](https://img.shields.io/badge/MCP-Server-purple.svg)](https://modelcontextprotocol.io/)
+[![arXiv](https://img.shields.io/badge/arXiv-2511.09030-b31b1b.svg)](https://arxiv.org/abs/2511.09030)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/readme-infographic-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset=".github/readme-infographic.svg">
+  <img alt="How MAKER Works - Architecture infographic showing the SPRT voting flow" src=".github/readme-infographic.svg" width="100%">
+</picture>
 
 > ## ⚠️ EXPERIMENTAL - NOT FOR PRODUCTION USE
 >
@@ -199,7 +208,7 @@ Our validation experiments reveal important insights about MAKER's applicability
 |-----------|-------|------------|
 | **Algorithm Fidelity** | A+ | Exact k_min formula, SPRT voting, strict m=1 enforcement |
 | **Experimental Coverage** | A | Tokio concurrency, event sourcing, MCP integration |
-| **Completeness** | B | Lacks automated decomposition (future exploration) |
+| **Completeness** | A- | LLM-driven decomposition, domain decomposers, full recursive orchestration |
 | **Validation Status** | B+ | Demos validate core claims; edge cases need more testing |
 
 ### What's Implemented Well
@@ -222,10 +231,10 @@ Beyond the paper's theoretical model (experimental additions):
 
 ### Known Limitations
 
-Deferred to post-MVP (acknowledged gaps vs. paper's full vision):
+Acknowledged gaps vs. paper's full vision:
 
-- **Automated Decomposition**: The paper's "Insight Agents" for recursive task discovery are not yet implemented—decomposition is currently manual/deterministic
 - **Semantic Matching**: MVP defaults to exact string matching; embedding-based and AST-based matchers are available but less battle-tested
+- **Decomposition Testing**: LLM-driven decomposition is implemented but needs more real-world validation across diverse task types
 
 ### Practical Compromises
 
@@ -253,6 +262,13 @@ src/
 │   │   ├── ollama_embedding.rs # Ollama embedding client
 │   │   ├── openai_embedding.rs # OpenAI embedding client
 │   │   └── code.rs             # CodeMatcher (tree-sitter AST, optional)
+│   ├── decomposition/  # Recursive task decomposition (Section 7)
+│   │   ├── llm_agent.rs        # LLM-driven "Insight Agent" for task discovery
+│   │   ├── discriminator.rs    # Vote on decomposition proposals
+│   │   ├── orchestrator.rs     # Recursive decomposition coordinator
+│   │   ├── solver.rs           # Leaf node executor with voting
+│   │   ├── aggregator.rs       # Solution composition
+│   │   └── domains/            # Domain-specific decomposers (coding, data, ML)
 │   └── orchestration.rs# TaskOrchestrator with m=1 constraint
 ├── llm/                # Multi-provider LLM abstraction
 │   ├── ollama.rs       # Local inference
@@ -263,7 +279,7 @@ src/
 │   └── sampler.rs      # Temperature-diverse parallel sampling
 ├── mcp/                # MCP server (rmcp v0.13)
 │   ├── server.rs       # MakerServer with #[tool_router]
-│   └── tools/          # maker/vote, validate, calibrate, configure
+│   └── tools/          # maker/vote, validate, calibrate, configure, decompose
 └── events/             # Event-driven observability
     ├── bus.rs           # Tokio broadcast channel
     └── observers/       # Logging (tracing) + Metrics
@@ -320,6 +336,29 @@ Request:
 Response:
 ```json
 { "applied": true, "current_config": {} }
+```
+
+### `maker/decompose` - LLM-Driven Task Decomposition
+
+Request:
+```json
+{
+  "task": "Build a web scraper that extracts product data",
+  "depth_limit": 10,
+  "provider": "openai"
+}
+```
+Response:
+```json
+{
+  "task_id": "root-task",
+  "subtasks": [
+    {"id": "1", "description": "Parse HTML structure", "is_leaf": true},
+    {"id": "2", "description": "Extract product fields", "is_leaf": true}
+  ],
+  "composition": "sequential",
+  "depth": 1
+}
 ```
 
 ## Cost Scaling
