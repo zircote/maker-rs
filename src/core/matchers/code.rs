@@ -171,7 +171,7 @@ impl CodeMatcher {
         } else {
             // Internal node — recurse into children
             for i in 0..node.child_count() {
-                if let Some(child) = node.child(i) {
+                if let Some(child) = node.child(i as u32) {
                     self.walk_and_normalize(child, source, renamer, output);
                 }
             }
