@@ -236,7 +236,7 @@ impl CodingDecomposer {
 
         // Recurse into children
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 self.collect_errors(child, source, errors);
             }
         }
@@ -246,7 +246,7 @@ impl CodingDecomposer {
     fn count_nodes(&self, node: Node) -> usize {
         let mut count = 1;
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 count += self.count_nodes(child);
             }
         }
@@ -283,7 +283,7 @@ impl CodingDecomposer {
         }
 
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 count += self.count_functions(child);
             }
         }
@@ -374,7 +374,7 @@ impl CodingDecomposer {
 
         // Recurse into children to find nested functions
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 self.extract_function_subtasks(child, source, parent_id, subtasks, order);
             }
         }
@@ -398,7 +398,7 @@ impl CodingDecomposer {
 
             // Find the block child and decompose it
             for i in 0..node.child_count() {
-                if let Some(child) = node.child(i) {
+                if let Some(child) = node.child(i as u32) {
                     if block_kinds.contains(&child.kind()) || child.kind() == "block" {
                         self.extract_block_children(
                             child, source, parent_id, &fn_name, subtasks, order,
@@ -409,7 +409,7 @@ impl CodingDecomposer {
         } else {
             // Recurse to find functions
             for i in 0..node.child_count() {
-                if let Some(child) = node.child(i) {
+                if let Some(child) = node.child(i as u32) {
                     self.extract_block_subtasks(child, source, parent_id, subtasks, order);
                 }
             }
@@ -429,7 +429,7 @@ impl CodingDecomposer {
         let block_kinds = self.block_node_kinds();
 
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 let kind = child.kind();
 
                 if block_kinds.contains(&kind) {
@@ -537,7 +537,7 @@ impl CodingDecomposer {
 
         // Recurse into children
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 self.extract_line_subtasks(child, source, parent_id, subtasks, order);
             }
         }
@@ -590,7 +590,7 @@ impl CodingDecomposer {
     fn extract_function_name(&self, node: Node, source: &[u8]) -> String {
         // Look for identifier child that represents the name
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 let kind = child.kind();
                 if kind == "identifier"
                     || kind == "name"
@@ -619,7 +619,7 @@ impl CodingDecomposer {
         let mut preamble = String::new();
 
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
+            if let Some(child) = node.child(i as u32) {
                 if import_kinds.contains(&child.kind()) {
                     if let Ok(text) = child.utf8_text(source) {
                         preamble.push_str(text);
