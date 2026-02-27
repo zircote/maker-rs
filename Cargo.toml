@@ -26,7 +26,7 @@ prometheus = { version = "0.14", optional = true }
 once_cell = { version = "1", optional = true }
 tree-sitter = { version = "0.24", optional = true }
 tree-sitter-rust = { version = "0.23", optional = true }
-tree-sitter-python = { version = "0.23", optional = true }
+tree-sitter-python = { version = "0.25", optional = true }
 tree-sitter-javascript = { version = "0.23", optional = true }
 
 [dev-dependencies]
