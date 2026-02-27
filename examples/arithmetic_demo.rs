@@ -26,6 +26,7 @@ use maker::core::{
 };
 use maker::llm::adapter::setup_provider_client;
 use rand::Rng;
+use rand::SeedableRng;
 use std::env;
 use std::time::Instant;
 
@@ -73,11 +74,11 @@ impl Problem {
     fn generate(rng: &mut impl Rng, difficulty: u32) -> Self {
         // Scale numbers based on difficulty (1-5)
         let max = 10i64.pow(difficulty.min(5));
-        let a = rng.gen_range(10..max);
-        let b = rng.gen_range(10..max);
+        let a = rng.random_range(10..max);
+        let b = rng.random_range(10..max);
 
         // Weight towards addition/subtraction (multiplication is harder)
-        let op = match rng.gen_range(0..10) {
+        let op = match rng.random_range(0..10) {
             0..=4 => Operation::Add,
             5..=8 => Operation::Subtract,
             _ => Operation::Multiply,
@@ -207,7 +208,7 @@ fn main() {
     // Generate problems
     let mut rng: rand::rngs::StdRng = match args.seed {
         Some(seed) => rand::SeedableRng::seed_from_u64(seed),
-        None => rand::SeedableRng::from_entropy(),
+        None => rand::rngs::StdRng::from_os_rng(),
     };
     let problems: Vec<Problem> = (0..args.problems)
         .map(|_| Problem::generate(&mut rng, args.difficulty))
