@@ -22,7 +22,7 @@ tokio = { version = "1", features = ["full", "sync", "rt", "time", "signal"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 humantime = "2"
-prometheus = { version = "0.13", optional = true }
+prometheus = { version = "0.14", optional = true }
 once_cell = { version = "1", optional = true }
 tree-sitter = { version = "0.24", optional = true }
 tree-sitter-rust = { version = "0.23", optional = true }
