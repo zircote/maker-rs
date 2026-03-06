@@ -499,6 +499,29 @@ MAKER implements defense-in-depth for MCP tool security:
 
 See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 
+## Citing This Project
+
+If you use MAKER in your research or projects, please cite it using GitHub's **"Cite this repository"** button, or use the following BibTeX:
+
+```bibtex
+@software{allen_maker_2026,
+  author       = {Allen, Robert},
+  title        = {{MAKER Framework}},
+  version      = {0.3.0},
+  date         = {2026-02-27},
+  url          = {https://github.com/zircote/maker-rs},
+  license      = {MIT}
+}
+```
+
+See [`CITATION.cff`](./CITATION.cff) for full citation metadata.
+
+## Acknowledgments
+
+MAKER is a Rust implementation of the algorithms and theoretical framework presented in:
+
+> Meyerson, E., Qiu, X., & Lehman, J. (2025). *Solving a Million-Step LLM Task with Zero Errors*. [arXiv:2511.09030](https://arxiv.org/abs/2511.09030)
+
 ## References
 
 1. Meyerson, E., et al. (2025). *Solving a Million-Step LLM Task with Zero Errors*. [arXiv:2511.09030](https://arxiv.org/abs/2511.09030)
