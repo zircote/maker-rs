@@ -1,0 +1,71 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "MAKER Framework"
+abstract: >-
+  MAKER (Massively decomposed Agentic processes with K-margin Error Reduction)
+  is a Rust library and MCP server for zero-error long-horizon LLM agent
+  execution. It implements SPRT-based voting, red-flag validation, and
+  microagent orchestration to achieve mathematically-grounded error correction
+  for LLM agents.
+version: "0.3.0"
+date-released: "2026-02-27"
+license: MIT
+url: "https://github.com/zircote/maker-rs"
+repository-code: "https://github.com/zircote/maker-rs"
+authors:
+  - family-names: Allen
+    given-names: Robert
+    email: zircote@gmail.com
+    orcid: "https://orcid.org/0009-0007-9691-004X"
+identifiers:
+  - type: url
+    value: "https://github.com/zircote/maker-rs"
+    description: "GitHub repository"
+keywords:
+  - llm
+  - error-correction
+  - sprt
+  - voting
+  - mcp
+  - rust
+  - microagent
+  - orchestration
+  - red-flag-validation
+  - zero-error
+preferred-citation:
+  type: software
+  title: "MAKER Framework"
+  abstract: >-
+    MAKER (Massively decomposed Agentic processes with K-margin Error Reduction)
+    is a Rust library and MCP server for zero-error long-horizon LLM agent
+    execution. It implements SPRT-based voting, red-flag validation, and
+    microagent orchestration to achieve mathematically-grounded error correction
+    for LLM agents.
+  version: "0.3.0"
+  date-released: "2026-02-27"
+  license: MIT
+  url: "https://github.com/zircote/maker-rs"
+  repository-code: "https://github.com/zircote/maker-rs"
+  authors:
+    - family-names: Allen
+      given-names: Robert
+      email: zircote@gmail.com
+      orcid: "https://orcid.org/0009-0007-9691-004X"
+references:
+  - type: article
+    title: "Solving a Million-Step LLM Task with Zero Errors"
+    authors:
+      - family-names: Meyerson
+        given-names: Elliot
+      - family-names: Qiu
+        given-names: Xin
+      - family-names: Lehman
+        given-names: Joel
+    year: 2025
+    url: "https://arxiv.org/abs/2511.09030"
+    abstract: >-
+      The foundational paper defining the MAKER algorithm for zero-error
+      long-horizon LLM execution via SPRT-based voting, red-flag validation,
+      and m=1 microagent decomposition. This implementation is based on the
+      algorithms and theoretical framework presented in this paper.
